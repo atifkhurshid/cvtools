@@ -1,1 +1,1 @@
-from .importutils import lazy_import
+from .directory_reader import DirectoryReader
