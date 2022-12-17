@@ -4,7 +4,7 @@ Requirements:
     - cv2
     - matplotlib
 Use: 
-    - from utils.image.io import *
+    - from cvtools.image.io import *
 Methods:
     - imread
     - imwrite
