@@ -1,1 +1,1 @@
-from .dataset import Dataset
+from .classification_dataset_tf import ClassificationDatasetTF
