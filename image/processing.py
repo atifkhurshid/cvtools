@@ -42,6 +42,7 @@ def resize(
     img.thumbnail(size, resample=resample)
 
     # Pad image if needed
+    # Source: https://jdhao.github.io/2017/11/06/resize-image-to-square-with-padding/
     if img.size != size:
         dw = size[0] - img.size[0]
         dh = size[1] - img.size[1]
