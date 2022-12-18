@@ -5,7 +5,7 @@ Requirements:
     - PIL
     - pathlib
 Use: 
-    - from cvtools.base.dataset import Dataset
+    - from cvtools.base.dataset import ClassificationDataset
 Classes:
     - Dataset
 """
@@ -19,7 +19,7 @@ from pathlib import Path
 from ...image.processing import resize
 
 
-class Dataset(object):
+class ClassificationDataset(object):
 
     def __init__(
             self,
