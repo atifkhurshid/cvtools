@@ -10,11 +10,18 @@ Methods:
     - imwrite
     - imshow
 """
+from typing import Tuple
+
 import cv2
+import numpy as np
 import matplotlib.pyplot as plt
 
 
-def imread(filepath, color=cv2.COLOR_BGR2RGB, dshape=None):
+def imread(
+        filepath: str,
+        color: int = cv2.COLOR_BGR2RGB,
+        dshape: Tuple[int, int] = None
+    ) -> np.ndarray:
     """Read, color-correct and resize image file with cv2
 
     Parameters
@@ -49,7 +56,12 @@ def imread(filepath, color=cv2.COLOR_BGR2RGB, dshape=None):
     return img
 
 
-def imwrite(filepath, img, color=cv2.COLOR_RGB2BGR, **kwargs):
+def imwrite(
+        filepath: str,
+        img: np.ndarray,
+        color: int = cv2.COLOR_RGB2BGR,
+        **kwargs: dict,
+    ) -> bool:
     """Save image using cv2
 
     Args:
@@ -73,7 +85,12 @@ def imwrite(filepath, img, color=cv2.COLOR_RGB2BGR, **kwargs):
     return res
 
 
-def imshow(img, axis=False, block=False, **kwargs):
+def imshow(
+        img: np.ndarray,
+        axis: bool = False,
+        block: bool = False,
+        **kwargs: dict,
+    ) -> None:
     """Display image using pyplot.imshow
 
     Parameters
