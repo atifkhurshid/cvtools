@@ -54,12 +54,12 @@ class ClassificationDataset(object):
     def __getitem__(self, index: int) -> Tuple[np.ndarray, int]:
 
         id = self.ids[index]
-        X, y = self.__data_generation(id)
+        X, y = self._data_generation(id)
 
         return X, y
 
 
-    def __data_generation(self, id: int) -> Tuple[np.ndarray, int]:
+    def _data_generation(self, id: int) -> Tuple[np.ndarray, int]:
         
         label = self.labels[id]
         path = self.root_dir / self.label2class[label] / self.filenames[id]
