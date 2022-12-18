@@ -26,7 +26,6 @@ class ClassificationDataset(object):
             root_dir: str,
             exts: List[str] = ['.jpg','.png'],
             image_size: Tuple[int, int] = None,
-            shuffle: bool = False,
         ) -> None:
 
         self.root_dir = Path(root_dir)
@@ -46,8 +45,6 @@ class ClassificationDataset(object):
             self.labels.extend(labels)
 
         self.ids = np.arange(len(self.filenames))
-        if shuffle:
-            np.random.shuffle(self.ids)
 
 
     def __len__(self) -> int:
