@@ -1,57 +1,63 @@
 """
 Package: image.io
 Requirements:
-    - cv2
+    - numpy
     - matplotlib
+    - pillow
 Use: 
-    - from cvtools.image.io import *
+    - from image.io import *
 Methods:
     - imread
     - imwrite
     - imshow
-"""
-from typing import Tuple
 
-import cv2
+Author: Atif Khurshid
+Created: 2022-12-16
+Modified: 2025-05-23
+Version: 2.2
+
+Changelog:
+    - 2025-05-23: Changed imread to use processing.resize
+    - 2025-05-22: Change size parameter ordering to (height, width)
+    - 2025-05-22: Added resampling parameter to imread()
+    - 2025-05-22: Change image processing library from OpenCV to PIL
+"""
 import numpy as np
 import matplotlib.pyplot as plt
+from PIL import Image
+from .processing import imresize
 
 
 def imread(
         filepath: str,
-        color: int = cv2.COLOR_BGR2RGB,
-        dshape: Tuple[int, int] = None
+        mode: str = None,
+        size: tuple[int, int] = None,
+        **kwargs,
     ) -> np.ndarray:
-    """Read, color-correct and resize image file with cv2
+    """Read, color-correct and resize image file with PIL
 
     Parameters
     ----------
     filepath : str
         Path to image file
-    color : int, optional
-        cv2 color conversion code, default is cv2.COLOR_BGR2RGB
-    dshape : 2-tuple, optional
+    mode : int, optional
+        PIL color conversion mode, default is No Conversion
+    size : 2-tuple, optional
         Shape of returned image: (height, width), default is None
+    resample : int, optional
+        Resampling filter for resize, default is Image.LANCZOS
 
     Returns
     -------
     ndarray
         Image as ndarray, None if file cannot be read.
     """
-    img = cv2.imread(filepath, cv2.IMREAD_UNCHANGED)
-    if img is not None:
-        if color:
-            img = cv2.cvtColor(img, color)
-        if dshape:
-            # INTER_AREA interpolation when shrinking, INTER_LINEAR when enlarging
-            magnification = (dshape[0] * dshape[1]) / (img.shape[0] * img.shape[1])
-            if magnification < 1:
-                interpolation = cv2.INTER_AREA
-            else:
-                interpolation = cv2.INTER_LINEAR
-            # cv2 expects size as (x, y) instead of (h, w) in dshape
-            dsize = dshape[::-1]
-            img = cv2.resize(img, dsize, interpolation=interpolation)
+    with Image.open(filepath) as img:
+        if mode:
+            img = img.convert(mode)
+        if size:
+            img = imresize(img, size, **kwargs)
+        img = np.asarray(img, copy=True)
 
     return img
 
@@ -59,10 +65,10 @@ def imread(
 def imwrite(
         filepath: str,
         img: np.ndarray,
-        color: int = cv2.COLOR_RGB2BGR,
-        **kwargs: dict,
-    ) -> bool:
-    """Save image using cv2
+        mode: str = None,
+        **params
+    ) -> None:
+    """Save image using PIL
 
     Args:
         filepath: str
@@ -70,28 +76,23 @@ def imwrite(
         img: ndarray
             Image as ndarray
         color: int, optional
-            cv2 color conversion code, default is cv2.COLOR_RGB2BGR
-        kwargs: dict, optional
-            Additional arguments passed to cv2.imwrite()
-
-    Returns:
-        res: bool
-            Success status of saving operation
+            PIL color conversion mode, default is No Conversion
+        params: dict, optional
+            Additional arguments passed to Image.save()
     """
-    if color:
-        img = cv2.cvtColor(img, color)
-    res = cv2.imwrite(filepath, img, **kwargs)
-
-    return res
+    img = Image.fromarray(img)
+    if mode:
+        img = img.convert(mode)
+    img.save(filepath, **params)
 
 
 def imshow(
         img: np.ndarray,
         axis: bool = False,
         block: bool = False,
-        **kwargs: dict,
+        **kwargs,
     ) -> None:
-    """Display image using pyplot.imshow
+    """Display image using matplotlib
 
     Parameters
     ----------
@@ -104,6 +105,9 @@ def imshow(
     kwargs: dict, optional
         Additional arguments passed to matplotlib.pyplot.imshow()
     """
+    # Set default cmap for grayscale images to gray
+    if (img.ndim == 2 or img.shape[2] == 1) and "cmap" not in kwargs:
+        kwargs["cmap"] = "gray"
     plt.imshow(img, **kwargs)
     if not axis:
         plt.axis("off")
