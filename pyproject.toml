@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools >= 77.0.3", ]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cvtools"
+version = "2025.0.0"
+dependencies = [
+    "matplotlib",
+    "numpy",
+    "pandas",
+    "pillow",
+    "tqdm",
+    "scikit-learn",
+]
+requires-python = ">=3.9"
+authors = [
+  { name="Atif Khurshid" }
+]
+description = "Useful functions for computer vision tasks"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+
+[project.optional-dependencies]
+tensorflow = ["tensorflow"]
+torch = [
+    "torch",
+    "torchvision",
+    "torchaudio",
+]
+
+[project.urls]
+Homepage = "https://github.com/atifkhurshid/cvtools"
+Issues = "https://github.com/atifkhurshid/cvtools/issues"

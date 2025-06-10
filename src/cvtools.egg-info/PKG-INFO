@@ -1,0 +1,29 @@
+Metadata-Version: 2.4
+Name: cvtools
+Version: 2025.0.0
+Summary: Useful functions for computer vision tasks
+Author: Atif Khurshid
+License-Expression: MIT
+Project-URL: Homepage, https://github.com/atifkhurshid/cvtools
+Project-URL: Issues, https://github.com/atifkhurshid/cvtools/issues
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: matplotlib
+Requires-Dist: numpy
+Requires-Dist: pandas
+Requires-Dist: pillow
+Requires-Dist: tqdm
+Requires-Dist: scikit-learn
+Provides-Extra: tensorflow
+Requires-Dist: tensorflow; extra == "tensorflow"
+Provides-Extra: torch
+Requires-Dist: torch; extra == "torch"
+Requires-Dist: torchvision; extra == "torch"
+Requires-Dist: torchaudio; extra == "torch"
+Dynamic: license-file
+
+# Computer Vision Tools
+Useful functions for computer vision tasks
