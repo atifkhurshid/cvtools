@@ -24,7 +24,11 @@ from tqdm import tqdm
 
 class PCA():
 
-    def __init__(self, explained_variance_threshold=0.95):
+    def __init__(
+            self,
+            n_components: int | str = "best",
+            explained_variance_threshold: float = 0.95,
+        ):
 
         self.pca = None
         self.explained_variance_threshold = explained_variance_threshold
@@ -56,5 +60,5 @@ class PCA():
             x = x @ self.selected_components.T
             return x
         else:
-            print("Error: PCA model is not fitted yet.")
+            raise Exception("Error: PCA model is not fitted yet.")
     
