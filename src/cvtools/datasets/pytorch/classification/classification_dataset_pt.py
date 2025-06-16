@@ -23,7 +23,7 @@ class ClassificationDatasetPT(ClassificationDataset, Dataset):
             root_dir: str,
             exts: list[str] = ['.jpg','.png'],
             image_size: tuple[int, int] = (224, 224),
-            transform: function = None,
+            transform = None,
         ) -> None:
 
         super().__init__(root_dir, exts, image_size)
