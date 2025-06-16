@@ -80,7 +80,7 @@ class SUNDataset():
             # Change label name according to the class hierarchy
             self.labels = [class_hierarchy_df.loc[x, class_hierarchy] for x in self.labels]
 
-        self.classes = list(set(self.labels))
+        self.classes = sorted(list(set(self.labels)))
         self.label2index = {x : i for i, x in enumerate(self.classes)}
         self.index2label = {v : k for k, v in self.label2index.items()}
 

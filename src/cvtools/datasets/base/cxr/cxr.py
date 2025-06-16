@@ -63,7 +63,7 @@ class CXRDataset():
         if binary:
             self.data['Finding Labels'] = self.data['Finding Labels'].apply(lambda x: "Normal" if x == 'No Finding' else "Abnormal")
 
-        self.classes = self.data['Finding Labels'].unique().tolist()
+        self.classes = sorted(self.data['Finding Labels'].unique().tolist())
         self.label2idx = {x : i for i, x in enumerate(self.classes)}
         self.idx2label = {v : k for k, v in self.label2idx.items()}
 
