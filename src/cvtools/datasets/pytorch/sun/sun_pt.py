@@ -23,6 +23,7 @@ class SUNDatasetPT(SUNDataset, Dataset):
             root_dir,
             class_hierarchy = "basic",
             image_size = None,
+            preserve_aspect_ratio = True,
             train = True,
             transform = None,
             target_transform = None,
@@ -31,6 +32,7 @@ class SUNDatasetPT(SUNDataset, Dataset):
             root_dir = root_dir,
             class_hierarchy = class_hierarchy,
             image_size = image_size,
+            preserve_aspect_ratio = preserve_aspect_ratio,
             train = train,
         )
 

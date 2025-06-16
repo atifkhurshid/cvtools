@@ -18,7 +18,13 @@ from ....image import imread
 
 class SUNDataset():
     def __init__(
-            self, root_dir, class_hierarchy="basic", image_size=None, train=True):
+            self,
+            root_dir,
+            class_hierarchy = "basic",
+            image_size = None,
+            preserve_aspect_ratio = True,
+            train = True
+        ):
         """
         Parameters
         ----------
@@ -34,6 +40,7 @@ class SUNDataset():
 
         self.root_dir = root_dir
         self.image_size = image_size    # (height, width)
+        self.preserve_aspect_ratio = preserve_aspect_ratio
 
         self.images_dir = os.path.join(self.root_dir, 'images')
         if not os.path.exists(self.images_dir):
@@ -86,7 +93,12 @@ class SUNDataset():
         # Read filepath from the list
         img_path = os.path.join(self.images_dir, self.filepaths[idx])
         # Read image as RGB
-        image = imread(img_path, mode="RGB", size=self.image_size)
+        image = imread(
+            img_path,
+            mode = "RGB",
+            size = self.image_size,
+            preserve_aspect_ratio = self.preserve_aspect_ratio,
+        )
         # Read label from the list and convert to label index
         label = self.label2index[self.labels[idx]]
 
