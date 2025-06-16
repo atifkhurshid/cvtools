@@ -18,11 +18,25 @@ from ...base import CXRDataset
 
 class CXRDatasetPT(CXRDataset, Dataset):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(
+            self,
+            root_dir,
+            image_size = None,
+            train = True,
+            binary = True,
+            transform = None,
+            target_transform = None
+    ):
+        super().__init__(
+            root_dir = root_dir,
+            image_size = image_size,
+            train = train,
+            binary = binary
+        )
 
-        self.transform = kwargs.get('transform', None)
-        self.target_transform = kwargs.get('target_transform', None)
+        self.transform = transform
+        self.target_transform = target_transform
+
 
     def __getitem__(self, idx):
         image, label = super().__getitem__(idx)

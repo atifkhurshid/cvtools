@@ -18,11 +18,25 @@ from ...base import SUNDataset
 
 class SUNDatasetPT(SUNDataset, Dataset):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(
+            self,
+            root_dir,
+            class_hierarchy = "basic",
+            image_size = None,
+            train = True,
+            transform = None,
+            target_transform = None,
+        ):
+        super().__init__(
+            root_dir = root_dir,
+            class_hierarchy = class_hierarchy,
+            image_size = image_size,
+            train = train,
+        )
 
-        self.transform = kwargs.get('transform', None)
-        self.target_transform = kwargs.get('target_transform', None)
+        self.transform = transform
+        self.target_transform = target_transform
+
 
     def __getitem__(self, idx):
         image, label = super().__getitem__(idx)
@@ -37,4 +51,3 @@ class SUNDatasetPT(SUNDataset, Dataset):
             label = self.target_transform(label)
 
         return image, label
-
