@@ -1,23 +1,17 @@
 """
-Package: image.processing
-Requirements:
-    - PIL
-Use: 
-    - from image.processing import *
-Methods:
-    - resize
-
-Author: Atif Khurshid
-Created: 2022-12-18
-Modified: 2025-06-08
-Version: 1.2
-
-Changelog:
-    - 2025-06-08: Changed resize to imresize
-    - 2025-06-08: Allowed to skip aspect ratio preservation if aspect ratio is same
-    - 2025-05-22: Added fill and kwargs parameters to resize
-    - 2025-05-22: Allowed resize without preserving aspect ratio
+Image processing module.
 """
+
+# Author: Atif Khurshid
+# Created: 2022-12-18
+# Modified: 2025-06-08
+# Version: 1.2
+# Changelog:
+#     - 2025-06-08: Changed resize to imresize
+#     - 2025-06-08: Allowed to skip aspect ratio preservation if aspect ratio is same
+#     - 2025-05-22: Added fill and kwargs parameters to resize
+#     - 2025-05-22: Allowed resize without preserving aspect ratio
+
 import numpy as np
 from PIL import Image, ImageOps
 
@@ -30,27 +24,39 @@ def imresize(
         fill: str | int | tuple = 0,
         **kwargs,
     ) -> np.ndarray:
-    """Resize image possibly while maintianing aspect ratio
+    """
+    Resize image possibly while maintaining aspect ratio.
 
-    Args:
-        img: PIL.Image or ndarray
-            Image to be resized
-        size: tuple
-            Size after resize operation, (height, width)
-        resample: PIL.Image filter, optional
-            Resampling filter, default is Image.LANCZOS
-        preserve_aspect_ratio: bool, optional
-            If True, image will be resized to fit within the given size
-            while maintaining the aspect ratio, filling any empty regions
-            with padding.
-        fill: str or int or tuple, optional
-            Color to use for padding, default is 0 (black)
-        kwargs: optional
-            Additional arguments to be passed to the PIL.Image.resize() or thumbnail() methods
+    Parameters
+    ----------
+    img : Image.Image or ndarray
+        Input image to resize, can be a PIL Image or a numpy array.
+    size : tuple[int, int]
+        Desired output size as (height, width).
+    resample : int, optional
+        Resampling filter to use when resizing, default is Image.LANCZOS.
+    preserve_aspect_ratio : bool, optional
+        Whether to preserve the aspect ratio of the image, default is True.
+    fill : str, int, or tuple, optional
+        Color to use for padding if aspect ratio is preserved and padding is needed,
+        default is 0 (black). Can be a string (e.g., 'white'), an integer (grayscale),
+        or a tuple for RGB/RGBA colors.
+    **kwargs : dict, optional
+        Additional keyword arguments passed to the PIL resize method.
 
-    Returns:
-        img: PIL.Image
-            Resized image as PIL.Image
+    Returns
+    -------
+    np.ndarray
+        Resized image as a numpy array.
+
+    Examples
+    --------
+    >>> from PIL import Image
+    >>> from cvtools.image import imresize
+    >>> img = Image.open('path/to/image.jpg')
+    >>> resized_img = imresize(img, (256, 256), resample=Image.BICUBIC)
+    >>> resized_img = imresize(img, (256, 256), preserve_aspect_ratio=False)
+    >>> resized_img = imresize(img, (256, 256), fill='white')
     """
     if not isinstance(img, Image.Image):
         img = Image.fromarray(img)
