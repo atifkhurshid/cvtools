@@ -1,3 +1,14 @@
+"""
+PCA visualization module.
+"""
+
+# Author: Atif Khurshid
+# Created: 2025-06-16
+# Modified: None
+# Version: 1.0
+# Changelog:
+#     - None
+
 import numpy as np
 import mpl_toolkits.mplot3d
 import matplotlib.pyplot as plt
@@ -7,13 +18,41 @@ from sklearn.decomposition import IncrementalPCA
 plt.style.use('seaborn-v0_8-notebook')
 
 def pca_visualization(
-        features,
-        labels,
-        class_names,
-        n_components=2,
-        batch_size=1000,
-        figsize=(10, 8)
+        features: list[np.ndarray] | np.ndarray,
+        labels: list | np.ndarray,
+        class_names: list[str],
+        n_components: int = 2,
+        batch_size: int = 1000,
+        figsize: tuple[int, int] = (10, 8),
     ):
+    """
+    Visualize high-dimensional features using PCA.
+
+    Parameters
+    ----------
+    features : list of np.ndarray or np.ndarray
+        High-dimensional features to be reduced.
+    labels : list or np.ndarray
+        Labels corresponding to the features, used for coloring the points.
+    class_names : list of str
+        Names of the classes corresponding to the labels.
+    n_components : int, optional
+        Number of principal components to keep, default is 2.
+    batch_size : int, optional
+        Batch size for IncrementalPCA, default is 1000.
+    figsize : tuple of int, optional
+        Size of the figure for visualization, default is (10, 8).
+    
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from cvtools.visualization import pca_visualization
+    >>> features = np.random.rand(100, 50)  # 100 samples, 50 features
+    >>> labels = np.random.randint(0, 5, size=100)  # 5 classes
+    >>> class_names = [f'Class {i}' for i in range(5)]
+    >>> pca_visualization(features, labels, class_names, n_components=2, batch_size=10, figsize=(12, 10))
+    """
+    assert n_components in [2, 3], "n_components must be either 2 or 3 for visualization."
 
     pca = IncrementalPCA(n_components=n_components, batch_size=batch_size)
     reduced_features = pca.fit_transform(features)
