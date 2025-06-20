@@ -44,10 +44,10 @@ class SUNDatasetPT(SUNDataset, Dataset):
         ...     # Process each batch of images and labels
         ...     pass
         """
-        super().__init__(*args, **kwargs)
+        self.transform = kwargs.pop("transform", None)
+        self.target_transform = kwargs.pop("target_transform", None)
 
-        self.transform = kwargs.get("transform", None)
-        self.target_transform = kwargs.get("target_transform", None)
+        super().__init__(*args, **kwargs)
 
 
     def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:

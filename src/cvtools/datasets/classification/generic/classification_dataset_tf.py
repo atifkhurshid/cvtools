@@ -42,10 +42,10 @@ class ClassificationDatasetTF(ClassificationDataset, Sequence):
         ...     # Process each batch of images and labels
         ...     pass
         """
-        super().__init__(*args, **kwargs)
+        self.batch_size = kwargs.pop("batch_size", 32)
+        self.shuffle = kwargs.pop("shuffle", False)
 
-        self.batch_size = kwargs.get("batch_size", 32)
-        self.shuffle = kwargs.get("shuffle", False)
+        super().__init__(*args, **kwargs)
 
         self.on_epoch_end()
 
