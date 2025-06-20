@@ -16,7 +16,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 
-from . import imresize as resize
+from .processing import imresize as resize
 
 
 def imread(

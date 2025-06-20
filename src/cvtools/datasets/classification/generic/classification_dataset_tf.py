@@ -13,7 +13,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras.utils import Sequence
 
-from . import ClassificationDataset
+from .classification_dataset import ClassificationDataset
 
 
 class ClassificationDatasetTF(ClassificationDataset, Sequence):

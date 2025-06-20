@@ -13,7 +13,7 @@ import torch
 from torch.utils.data import Dataset
 from torchvision.transforms.v2 import ToImage
 
-from . import ClassificationDataset
+from .classification_dataset import ClassificationDataset
 
 
 class ClassificationDatasetPT(ClassificationDataset, Dataset):

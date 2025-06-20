@@ -18,8 +18,8 @@ Version: 1.0
 Changelog:
     - None
 """
-from sklearn.decomposition import IncrementalPCA
 from tqdm import tqdm
+from sklearn.decomposition import IncrementalPCA
 
 
 class PCA():
