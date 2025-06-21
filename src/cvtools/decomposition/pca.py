@@ -5,9 +5,10 @@ Customized PCA module.
 # Author: Atif Khurshid
 # Created: 2025-06-02
 # Modified: 2025-06-21
-# Version: 1.1
+# Version: 1.2
 # Changelog:
 #     - 2025-06-21: Change fit function to directly use fit function of IncrementalPCA
+#     - 2025-06-21: Add partial fit functionality
 
 import numpy as np
 from sklearn.decomposition import IncrementalPCA
@@ -35,8 +36,7 @@ class PCA():
         n_samples, n_features = x.shape
         self.pca = IncrementalPCA(n_components=n_features, batch_size=batch_size)
         self.pca.fit(x)
-        cumulative_variance = self.pca.explained_variance_ratio_.cumsum()
-        self.selected_components = self.pca.components_[cumulative_variance <= self.explained_variance_threshold]
+        self.finalize()
 
 
     def transform(self, x: np.ndarray) -> np.ndarray:
@@ -46,4 +46,23 @@ class PCA():
             return x
         else:
             raise Exception("Error: PCA model is not fitted yet.")
+
+
+    def partial_fit(
+            self,
+            x: np.ndarray,
+            batch_size: int | None = None,
+        ):
+        if not self.pca:
+            n_samples, n_features = x.shape
+            self.pca = IncrementalPCA(n_components=n_features, batch_size=batch_size)
+        self.pca.partial_fit(x)
     
+
+    def finalize(self):
+        if self.pca:
+            cumulative_variance = self.pca.explained_variance_ratio_.cumsum()
+            self.selected_components = self.pca.components_[cumulative_variance <= self.explained_variance_threshold]
+        else:
+            raise Exception("Error: PCA model is not fitted yet.")
+        
