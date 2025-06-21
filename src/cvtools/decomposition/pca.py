@@ -57,6 +57,7 @@ class PCA():
             n_samples, n_features = x.shape
             self.pca = IncrementalPCA(n_components=n_features, batch_size=batch_size)
         self.pca.partial_fit(x)
+        self.finalize()
     
 
     def finalize(self):
