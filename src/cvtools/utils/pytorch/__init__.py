@@ -1,1 +1,1 @@
-from .image_tensors import concat_interleaved
+from .image_tensors import concat_channels_interleaved
