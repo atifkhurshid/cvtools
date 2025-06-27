@@ -18,6 +18,8 @@ class PyTorchModel(nn.Module):
     def __init__(self):
         super().__init__()
 
+        self.layers: nn.ModuleList
+
 
     def train_step(self, X, y):
         raise NotImplementedError("This model is not trainable.")
