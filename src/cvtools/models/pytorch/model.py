@@ -18,7 +18,7 @@ class PyTorchModel(nn.Module):
     def __init__(self):
         super().__init__()
 
-        self.layers: nn.ModuleList
+        self.layers = nn.ModuleList()
 
 
     def train_step(self, X, y):

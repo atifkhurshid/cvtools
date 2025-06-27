@@ -12,7 +12,7 @@ Utility functions for PyTorch image tensors.
 import torch
 
 
-def concat_interleaved(x, y):
+def concat_channels_interleaved(x, y):
     # Interleaved concatenation: x, y, x, y
     B, C, H, W = x.shape
     z = torch.stack([x, y], dim=2)

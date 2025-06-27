@@ -17,7 +17,7 @@ from .model import PyTorchModel
 
 class PyTorchSequentialModel(PyTorchModel):
     
-    def __init__(self, layers: list = []):
+    def __init__(self, layers: list[nn.Module] = []):
         super().__init__()
 
         for layer in layers:
