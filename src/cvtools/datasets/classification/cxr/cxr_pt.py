@@ -69,7 +69,7 @@ class CXRDatasetPT(CXRDataset, Dataset):
         image, label = super().__getitem__(index)
 
         image = ToImage()(image)
-        label = torch.tensor(label, dtype=torch.float32)
+        label = torch.tensor(label)
 
         if self.transform:
             image = self.transform(image)
