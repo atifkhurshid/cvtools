@@ -19,3 +19,15 @@ def concat_channels_interleaved(x, y):
     z = z.view(B, -1, H, W)
 
     return z
+
+
+def concat_channels_interleaved_nway(x, y, n):
+    # n-way Interleaved concatenation:
+    # x1, ... xn, y1, ... yn, xn+1, ... x2n, yn+1, ... yn
+    B, C, H, W = x.shape
+    x = x.view(B, C // n, n, H, W)
+    y = y.view(B, C // n, n, H, W)
+    z = torch.concat([x, y], dim=2)
+    z = z.view(B, -1, H, W)
+
+    return z
