@@ -37,7 +37,46 @@ def group_arrays_by_shape(
     
     groups = []
     for group in groups_dict.values():
-        group = np.array(group)
+        group = np.array(group, dtype=group[0].dtype)
         groups.append(group)
     
     return groups
+
+
+def pad_arrays_to_uniform_size(
+        arrays: list[np.ndarray],
+        mode: str = "constant",
+        **kwargs: dict,
+    ) -> np.ndarray:
+    """
+    Pads a list of 2D numpy arrays to the size of the largest array in the list.
+
+    Parameters
+    ----------
+    arrays : list of np.ndarray
+        List of 2D numpy arrays to be padded.
+    mode : str, optional
+        Padding mode. Default is "constant".
+    **kwargs : dict, optional
+        Additional keyword arguments for the padding function.
+        
+    Returns
+    -------
+    np.ndarray
+        A 3D numpy array, containing input arrays of the same size.
+    """
+    max_rows = max([arr.shape[0] for arr in arrays])
+    max_cols = max([arr.shape[1] for arr in arrays])
+
+    padded_arrays = []
+    for arr in arrays:
+        rows, cols = arr.shape
+        pad_top = int(np.ceil((max_rows - rows) / 2))
+        pad_bottom = int(np.floor((max_rows - rows) / 2))
+        pad_left = int(np.ceil((max_cols - cols) / 2))
+        pad_right = int(np.floor((max_cols - cols) / 2))
+
+        padded = np.pad(arr, ((pad_top, pad_bottom), (pad_left, pad_right)), mode=mode, **kwargs)
+        padded_arrays.append(padded)
+
+    return np.array(padded_arrays, dtype=padded_arrays[0].dtype)
