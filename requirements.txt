@@ -8,3 +8,4 @@ torchaudio[pytorch]
 torchvision[pytorch]
 tqdm
 scikit-learn
+seaborn
