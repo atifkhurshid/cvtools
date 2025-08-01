@@ -23,12 +23,12 @@ class PyTorchSequentialModel(PyTorchModel):
 
         Initializes the model with a list of layers.
 
-        Parameters:
+        Parameters
         -----------
         layers : list[nn.Module]
             List of layers to add to the model.
         
-        Examples:
+        Examples
         ---------
         >>> model = PyTorchSequentialModel([
         ...     nn.Linear(10, 20),
@@ -53,12 +53,12 @@ class PyTorchSequentialModel(PyTorchModel):
 
         Sequentially applies each layer to the input tensor.
 
-        Parameters:
+        Parameters
         -----------
         x : torch.Tensor
             Input tensor.
 
-        Returns:
+        Returns
         --------
         torch.Tensor
             Output tensor.

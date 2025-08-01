@@ -27,7 +27,7 @@ def evaluate_clustering(
     Computes and optionally prints the Adjusted Rand Index, Normalized Mutual Information,
     and Fowlkes-Mallows Score.
 
-    Parameters:
+    Parameters
     -----------
     labels_true : list or np.ndarray
         True labels of the data.
@@ -36,12 +36,12 @@ def evaluate_clustering(
     report : bool, optional
         If True, prints the evaluation scores. If False, returns them as a dictionary.
 
-    Returns:
+    Returns
     --------
     dict or None
         If report is False, returns a dictionary with evaluation scores.
     
-    Examples:
+    Examples
     ---------
     >>> labels_true = [0, 1, 1, 0, 2, 2]
     >>> labels_pred = [0, 0, 1, 1, 2, 2]

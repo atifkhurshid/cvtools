@@ -28,7 +28,7 @@ def extract_features(
     """
     Extract output features from the model for each sample in the dataloader.
 
-    Parameters:
+    Parameters
     -----------
     model : nn.Module
         The PyTorch model to extract features from.
@@ -37,14 +37,14 @@ def extract_features(
     device : str
         Device to run the model on (e.g., 'cpu' or 'cuda').
 
-    Returns:
+    Returns
     --------
     tuple
         A tuple containing:
         - features: numpy array of shape (n_samples, n_features)
         - labels: numpy array of shape (n_samples,)
 
-    Examples:
+    Examples
     ---------
     >>> model = PyTorchSequentialModel([
     ...     nn.Linear(10, 20),
@@ -85,7 +85,7 @@ def evaluate_classification_model(
 
     Requires the model to implement the `eval_step` method.
 
-    Parameters:
+    Parameters
     -----------
     model : PyTorchModel
         The PyTorch model to evaluate.
@@ -96,12 +96,12 @@ def evaluate_classification_model(
     report : bool
         Whether to print the classification report.
 
-    Returns:
+    Returns
     --------
     float | None
         The average loss over the dataset if report is False, otherwise None.
     
-    Examples:
+    Examples
     ---------
     >>> model = PyTorchSequentialModel([
     ...     nn.Linear(10, 20),
@@ -161,7 +161,7 @@ def train_model(
     val_dataloader : DataLoader | None
         DataLoader containing the validation dataset. If None, no validation is performed.
     
-    Examples:
+    Examples
     ---------
     >>> model = PyTorchSequentialModel([
     ...     nn.Linear(10, 20),

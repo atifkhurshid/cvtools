@@ -25,7 +25,7 @@ def evaluate_classification(
     Evaluate classification model performance.
     Prints the classification report and displays a confusion matrix.
 
-    Parameters:
+    Parameters
     -----------
     y_true : list or np.ndarray
         True labels of the data.
@@ -36,7 +36,7 @@ def evaluate_classification(
     figsize : tuple, optional
         Size of the confusion matrix plot.
     
-    Examples:
+    Examples
     ---------
     >>> y_true = [0, 1, 2, 2, 0, 1]
     >>> y_pred = [0, 0, 2, 2, 0, 1]
