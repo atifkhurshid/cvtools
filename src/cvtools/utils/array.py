@@ -29,8 +29,16 @@ def group_arrays_by_shape(
     -------
     list of np.ndarray
         List of numpy arrays, where each array contains all arrays of the same shape.
-    """
     
+    Examples
+    ---------
+    >>> arr1 = np.array([[1, 2], [3, 4]])
+    >>> arr2 = np.array([[5, 6, 7], [8, 9, 10]])
+    >>> arr3 = np.array([[11, 12], [13, 14]])
+    >>> grouped = group_arrays_by_shape([arr1, arr2, arr3])
+    >>> print([g.shape for g in grouped])
+    [(2, 2), (2, 3)]
+    """
     groups_dict = defaultdict(list)
     for arr in arrays:
         groups_dict[arr.shape].append(arr)
@@ -64,6 +72,17 @@ def pad_arrays_to_uniform_size(
     -------
     np.ndarray
         A 3D numpy array, containing input arrays of the same size.
+    
+    Examples
+    ---------
+    >>> arr1 = np.array([[1, 2], [3, 4]])
+    >>> arr2 = np.array([[5, 6, 7], [8, 9, 10]])
+    >>> padded = pad_arrays_to_uniform_size([arr1, arr2], mode='constant', constant_values=0)
+    >>> print(padded)
+    [[[ 1  2  0]
+      [ 3  4  0]],
+     [[ 5  6  7]
+      [ 8  9 10]]]
     """
     max_rows = max([arr.shape[0] for arr in arrays])
     max_cols = max([arr.shape[1] for arr in arrays])

@@ -16,6 +16,9 @@ import torch.nn as nn
 class PyTorchModel(nn.Module):
     
     def __init__(self):
+        """
+        Base class for PyTorch models.
+        """
         super().__init__()
 
         self.layers = nn.ModuleList()
