@@ -4,10 +4,11 @@ Evaluation functions for clustering models.
 
 # Author: Atif Khurshid
 # Created: 2025-06-22
-# Modified: 2025-08-01
-# Version: 1.1
+# Modified: 2025-08-04
+# Version: 1.2
 # Changelog:
 #     - 2025-08-01: Added documentation and type hints.
+#     - 2025-08-04: Scaled evaluation metrics.
 
 from pprint import pprint
 
@@ -58,9 +59,9 @@ def evaluate_clustering(
     }
     """
 
-    ari = adjusted_rand_score(labels_true, labels_pred)
-    nmi = adjusted_mutual_info_score(labels_true, labels_pred)
-    fms = fowlkes_mallows_score(labels_true, labels_pred)
+    ari = adjusted_rand_score(labels_true, labels_pred) * 100
+    nmi = adjusted_mutual_info_score(labels_true, labels_pred) * 100
+    fms = fowlkes_mallows_score(labels_true, labels_pred) * 100
 
     scores = {
         "Adjusted Rand Index": float(ari),

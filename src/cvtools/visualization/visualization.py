@@ -4,32 +4,37 @@ PCA visualization module.
 
 # Author: Atif Khurshid
 # Created: 2025-06-16
-# Modified: None
+# Modified: 2025-08-04
 # Version: 1.0
 # Changelog:
-#     - None
+#     - 2025-08-04: Add support for t-SNE visualization.
 
 import numpy as np
 import mpl_toolkits.mplot3d
 import matplotlib.pyplot as plt
+from sklearn.manifold import TSNE
 from sklearn.decomposition import IncrementalPCA
 
 
 plt.style.use('seaborn-v0_8-notebook')
 
-def pca_visualization(
+def visualize_features(
+        mode: str,
         features: list[np.ndarray] | np.ndarray,
         labels: list | np.ndarray,
         class_names: list[str],
         n_components: int = 2,
+        perplexity: float = 30.0,
         batch_size: int = 1000,
         figsize: tuple[int, int] = (10, 8),
     ):
     """
-    Visualize high-dimensional features using PCA.
+    Visualize high-dimensional features using PCA or t-SNE.
 
     Parameters
     ----------
+    mode : str
+        Visualization mode, either 'pca' or 'tsne'.
     features : list of np.ndarray or np.ndarray
         High-dimensional features to be reduced.
     labels : list or np.ndarray
@@ -38,6 +43,8 @@ def pca_visualization(
         Names of the classes corresponding to the labels.
     n_components : int, optional
         Number of principal components to keep, default is 2.
+    perplexity : float, optional
+        Perplexity parameter for t-SNE, default is 30.
     batch_size : int, optional
         Batch size for IncrementalPCA, default is 1000.
     figsize : tuple of int, optional
@@ -54,10 +61,18 @@ def pca_visualization(
     """
     assert n_components in [2, 3], "n_components must be either 2 or 3 for visualization."
 
-    pca = IncrementalPCA(n_components=n_components, batch_size=batch_size)
-    reduced_features = pca.fit_transform(features)
+    if mode == 'pca':
+        pca = IncrementalPCA(n_components=n_components, batch_size=batch_size)
+        reduced_features = pca.fit_transform(features)
 
-    print(f"Total variance explained: {np.sum(pca.explained_variance_ratio_)}")
+        print(f"Total variance explained: {np.sum(pca.explained_variance_ratio_)}")
+
+    elif mode == 'tsne':
+        tsne = TSNE(n_components=n_components, perplexity=perplexity, random_state=42)
+        reduced_features = tsne.fit_transform(features)
+
+    else:
+        raise ValueError("Invalid mode. Choose either 'pca' or 'tsne'.")
 
     fig = plt.figure(1, figsize=figsize)
 
@@ -87,7 +102,7 @@ def pca_visualization(
     ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
 
     ax.legend(
-        scatter.legend_elements(num=len(class_names))[0],
+        scatter.legend_elements(num=None)[0],
         class_names,
         loc="center left",
         title="Classes",
