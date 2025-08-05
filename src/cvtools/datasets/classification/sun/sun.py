@@ -39,7 +39,7 @@ class SUNDataset(_ClassificationBase):
         root_dir : str
             Path to the root directory of the dataset.
         class_hierarchy : str, optional
-            Class hierarchy to use. Options are "sun", "basic", or "superordinate". Default is "basic".
+            Class hierarchy to use. Options are "sun", "basic", "superordinate", or "binary". Default is "basic".
         image_size : tuple, optional
             Size of the images to be resized to (height, width). Default is None.
         preserve_aspect_ratio : bool, optional
