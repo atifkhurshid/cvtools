@@ -22,10 +22,11 @@ class SUNDataset(_ClassificationBase):
     def __init__(
             self,
             root_dir: str,
-            class_hierarchy: str="basic",
-            image_size: tuple[int, int] | None=None,
-            preserve_aspect_ratio: bool=True,
-            train: bool=True
+            class_hierarchy: str = "basic",
+            image_size: tuple[int, int] | None = None,
+            preserve_aspect_ratio: bool = True,
+            train: bool = True,
+            split_idx: int = 0,
         ):
         """
         Princeton SUN dataset loader.
@@ -46,6 +47,7 @@ class SUNDataset(_ClassificationBase):
             If True, preserve the aspect ratio of the images when resizing. Default is True.
         train : bool, optional
             If True, load training/validation data. If False, load test data. Default is True.
+        split_idx : int, optional
         
         Attributes
         ----------
@@ -81,10 +83,13 @@ class SUNDataset(_ClassificationBase):
         if not os.path.exists(self.images_dir):
             raise FileNotFoundError(f"Directory {self.images_dir} does not exist.")
     
+        splits = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10']
+        assert split_idx < len(splits), f"Invalid split index {split_idx}. Must be less than {len(splits)}."
+
         if train:
-            filepaths_list_path = os.path.join(self.root_dir, 'metadata', 'Training_01.txt')
+            filepaths_list_path = os.path.join(self.root_dir, 'metadata', f'Training_{splits[split_idx]}.txt')
         else:
-            filepaths_list_path = os.path.join(self.root_dir, 'metadata', 'Testing_01.txt')
+            filepaths_list_path = os.path.join(self.root_dir, 'metadata', f'Testing_{splits[split_idx]}.txt')
 
         # Read list of train images
         with open(filepaths_list_path, 'r') as f:
