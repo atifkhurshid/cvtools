@@ -4,15 +4,17 @@ PCA visualization module.
 
 # Author: Atif Khurshid
 # Created: 2025-06-16
-# Modified: 2025-08-04
+# Modified: 2025-08-06
 # Version: 1.0
 # Changelog:
 #     - 2025-08-04: Add support for t-SNE visualization.
+#     - 2025-08-06: Add support for Kernel PCA.
 
 import numpy as np
 import mpl_toolkits.mplot3d
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
+from sklearn.decomposition import KernelPCA
 from sklearn.decomposition import IncrementalPCA
 
 
@@ -29,12 +31,12 @@ def visualize_features(
         figsize: tuple[int, int] = (10, 8),
     ):
     """
-    Visualize high-dimensional features using PCA or t-SNE.
+    Visualize high-dimensional features using PCA, Kernel PCA, or t-SNE.
 
     Parameters
     ----------
     mode : str
-        Visualization mode, either 'pca' or 'tsne'.
+        Visualization mode, either 'pca', 'kpca', or 'tsne'.
     features : list of np.ndarray or np.ndarray
         High-dimensional features to be reduced.
     labels : list or np.ndarray
@@ -66,6 +68,12 @@ def visualize_features(
         reduced_features = pca.fit_transform(features)
 
         print(f"Total variance explained: {np.sum(pca.explained_variance_ratio_)}")
+
+    elif mode == 'kpca':
+        kpca = KernelPCA(n_components=n_components, kernel='precomputed')
+        reduced_features = kpca.fit_transform(features)
+
+        print(f"Total variance explained: {np.sum(kpca.eigenvalues_)}")
 
     elif mode == 'tsne':
         tsne = TSNE(n_components=n_components, perplexity=perplexity, random_state=42)
