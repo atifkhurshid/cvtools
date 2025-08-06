@@ -4,17 +4,15 @@ PCA visualization module.
 
 # Author: Atif Khurshid
 # Created: 2025-06-16
-# Modified: 2025-08-06
-# Version: 1.0
+# Modified: 2025-08-04
+# Version: 1.1
 # Changelog:
 #     - 2025-08-04: Add support for t-SNE visualization.
-#     - 2025-08-06: Add support for Kernel PCA.
 
 import numpy as np
 import mpl_toolkits.mplot3d
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
-from sklearn.decomposition import KernelPCA
 from sklearn.decomposition import IncrementalPCA
 
 
@@ -26,17 +24,17 @@ def visualize_features(
         labels: list | np.ndarray,
         class_names: list[str],
         n_components: int = 2,
-        perplexity: float = 30.0,
         batch_size: int = 1000,
+        perplexity: float = 30.0,
         figsize: tuple[int, int] = (10, 8),
     ):
     """
-    Visualize high-dimensional features using PCA, Kernel PCA, or t-SNE.
+    Visualize high-dimensional features using PCA, or t-SNE.
 
     Parameters
     ----------
     mode : str
-        Visualization mode, either 'pca', 'kpca', or 'tsne'.
+        Visualization mode, either 'pca', or 'tsne'.
     features : list of np.ndarray or np.ndarray
         High-dimensional features to be reduced.
     labels : list or np.ndarray
@@ -45,21 +43,21 @@ def visualize_features(
         Names of the classes corresponding to the labels.
     n_components : int, optional
         Number of principal components to keep, default is 2.
-    perplexity : float, optional
-        Perplexity parameter for t-SNE, default is 30.
     batch_size : int, optional
         Batch size for IncrementalPCA, default is 1000.
+    perplexity : float, optional
+        Perplexity parameter for t-SNE, default is 30.
     figsize : tuple of int, optional
         Size of the figure for visualization, default is (10, 8).
     
     Examples
     --------
     >>> import numpy as np
-    >>> from cvtools.visualization import pca_visualization
+    >>> from cvtools.visualization import visualize_features
     >>> features = np.random.rand(100, 50)  # 100 samples, 50 features
     >>> labels = np.random.randint(0, 5, size=100)  # 5 classes
     >>> class_names = [f'Class {i}' for i in range(5)]
-    >>> pca_visualization(features, labels, class_names, n_components=2, batch_size=10, figsize=(12, 10))
+    >>> visualize_features('pca', features, labels, class_names, n_components=2, batch_size=10, figsize=(12, 10))
     """
     assert n_components in [2, 3], "n_components must be either 2 or 3 for visualization."
 
@@ -68,12 +66,6 @@ def visualize_features(
         reduced_features = pca.fit_transform(features)
 
         print(f"Total variance explained: {np.sum(pca.explained_variance_ratio_)}")
-
-    elif mode == 'kpca':
-        kpca = KernelPCA(n_components=n_components, kernel='precomputed')
-        reduced_features = kpca.fit_transform(features)
-
-        print(f"Total variance explained: {np.sum(kpca.eigenvalues_)}")
 
     elif mode == 'tsne':
         tsne = TSNE(n_components=n_components, perplexity=perplexity, random_state=42)
