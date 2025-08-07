@@ -16,6 +16,7 @@ import pandas as pd
 
 from .._base import _ClassificationBase
 from ....image import imread
+from ....utils import stratified_sampling_by_class
 
 
 class SUNDataset(_ClassificationBase):
@@ -27,6 +28,7 @@ class SUNDataset(_ClassificationBase):
             preserve_aspect_ratio: bool = True,
             train: bool = True,
             split_idx: int = 0,
+            n_samples: int = 0,
         ):
         """
         Princeton SUN dataset loader.
@@ -48,7 +50,10 @@ class SUNDataset(_ClassificationBase):
         train : bool, optional
             If True, load training/validation data. If False, load test data. Default is True.
         split_idx : int, optional
-        
+            Index of the split to use. The dataset is divided into 10 splits. Default is 0.
+        n_samples : int, optional
+            Number of samples to load from each class. This is used for stratified sampling. Default is 0 (no sampling).
+
         Attributes
         ----------
         images_dir : str
@@ -112,6 +117,17 @@ class SUNDataset(_ClassificationBase):
             self.filepaths.append(filepath[1:])    # Remove leading '/'
 
         assert len(self.filepaths) == len(self.labels), "Number of filepaths and classes do not match."
+
+        # Perform stratified sampling if n_samples is specified
+        if n_samples > 0:
+            self.filepaths, self.labels = stratified_sampling_by_class(
+                np.array(self.filepaths),
+                np.array(self.labels),
+                n_samples=n_samples,
+                seed=42
+            )
+            self.filepaths = list(self.filepaths)
+            self.labels = list(self.labels)
 
         if class_hierarchy != "sun":
             # Read class hierarchy from CSV file
