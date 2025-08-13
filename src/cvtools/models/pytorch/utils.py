@@ -4,11 +4,14 @@ Utility functions for PyTorch models.
 
 # Author: Atif Khurshid
 # Created: 2025-06-22
-# Modified: 2025-08-01
-# Version: 1.2
+# Modified: 2025-08-08
+# Version: 1.3
 # Changelog:
 #     - 2025-08-01: Added type hints and documentation.
 #     - 2025-08-01: Updated training loop to include epochs.
+#     - 2025-08-08: Added feature map saving functionality.
+
+from pathlib import Path
 
 import torch
 import numpy as np
@@ -72,6 +75,56 @@ def extract_features(
     labels = np.concatenate(labels, axis=0)
 
     return features, labels
+
+
+def save_feature_maps(
+        model: nn.Module,
+        dataloader: DataLoader,
+        save_dir: str,
+        device: str,
+    ) -> None:
+    """
+    Save the output feature maps from the model for each batch in the dataloader.
+
+    Feature maps and labels are saved as separate `.npy` files for each batch.
+    
+    Parameters
+    -----------
+    model : nn.Module
+        The PyTorch model to extract feature maps from.
+    dataloader : DataLoader
+        DataLoader containing the dataset.
+    save_path : str
+        Path where the feature maps and labels will be saved.
+    device : str
+        Device to run the model on (e.g., 'cpu' or 'cuda').
+
+    Examples
+    ---------
+    >>> model = PyTorchSequentialModel([
+    ...     nn.Conv2d(10, 20, kernel_size=3),
+    ...     nn.ReLU(),
+    ... ])
+    >>> dataloader = DataLoader(dataset, batch_size=32)
+    >>> save_feature_maps(model, dataloader, save_path='features', device='cuda')
+    """
+    save_dir = Path(save_dir)
+    save_dir.mkdir(parents=True, exist_ok=True)
+
+    model = model.to(device)
+    model.eval()
+
+    for batch, (X, y) in tqdm(enumerate(dataloader), total=len(dataloader)):
+        X = X.to(device)
+        with torch.no_grad():
+            f = model(X)
+
+        features = f.cpu().numpy()
+        labels = y.cpu().numpy()
+
+        # Save features and labels to files
+        np.save(save_dir / f"features_batch_{batch}.npy", features)
+        np.save(save_dir / f"labels_batch_{batch}.npy", labels)
 
 
 def evaluate_classification_model(
