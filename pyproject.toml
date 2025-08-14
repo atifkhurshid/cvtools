@@ -7,6 +7,7 @@ name = "cvtools"
 version = "2025.0.0"
 dependencies = [
     "matplotlib",
+    "munkres",
     "numpy",
     "pandas",
     "pillow",

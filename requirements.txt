@@ -1,4 +1,5 @@
 matplotlib
+munkres
 numpy
 pandas
 pillow
