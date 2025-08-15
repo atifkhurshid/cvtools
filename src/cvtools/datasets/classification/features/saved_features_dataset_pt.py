@@ -43,10 +43,10 @@ class SavedFeaturesDatasetPT(SavedFeaturesDataset, Dataset):
         >>> labels.shape
         (32,)
         """
-        super().__init__(*args, **kwargs)
-
         self.transform = kwargs.pop("transform", None)
         self.target_transform = kwargs.pop("target_transform", None)
+
+        super().__init__(*args, **kwargs)
 
 
     def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
