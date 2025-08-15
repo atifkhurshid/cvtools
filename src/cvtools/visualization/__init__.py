@@ -1,1 +1,2 @@
 from .visualization import visualize_features
+from .visualization import all_visualizations

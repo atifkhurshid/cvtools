@@ -4,10 +4,11 @@ PCA visualization module.
 
 # Author: Atif Khurshid
 # Created: 2025-06-16
-# Modified: 2025-08-04
-# Version: 1.1
+# Modified: 2025-08-15
+# Version: 1.2
 # Changelog:
 #     - 2025-08-04: Add support for t-SNE visualization.
+#     - 2025-08-15: Add function to display all visualizations together.
 
 import numpy as np
 import mpl_toolkits.mplot3d
@@ -110,4 +111,91 @@ def visualize_features(
         ncol=1,
     )
 
+    plt.show()
+
+
+def all_visualizations(
+        features: list[np.ndarray] | np.ndarray,
+        labels: list | np.ndarray,
+        class_names: list[str],
+        batch_size: int = 1000,
+        perplexity: float = 30.0,
+        figsize: tuple[int, int] = (10, 32),
+    ):
+    """
+    Visualize high-dimensional features using PCA and t-SNE.
+
+    Parameters
+    ----------
+    features : list[np.ndarray] | np.ndarray
+        High-dimensional features to visualize.
+    labels : list | np.ndarray
+        Labels corresponding to the features, used for coloring the points.
+    class_names : list[str]
+        Names of the classes corresponding to the labels.
+    batch_size : int, optional
+        Batch size for IncrementalPCA, default is 1000.
+    perplexity : float, optional
+        Perplexity parameter for t-SNE, default is 30.0.
+    figsize : tuple[int, int], optional
+        Size of the figure for visualization, default is (10, 32).
+    
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from cvtools.visualization import all_visualizations
+    >>> features = np.random.rand(100, 50)  # 100 samples, 50 features
+    >>> labels = np.random.randint(0, 5, size=100)  # 5 classes
+    >>> class_names = [f'Class {i}' for i in range(5)]
+    >>> all_visualizations(features, labels, class_names, batch_size=1000, perplexity=30.0)
+    """
+    pca2 = IncrementalPCA(n_components=2, batch_size=batch_size)
+    pca2_reduced_features = pca2.fit_transform(features)
+    print(f"Total variance explained (2D): {np.sum(pca2.explained_variance_ratio_)}")
+
+    pca3 = IncrementalPCA(n_components=3, batch_size=batch_size)
+    pca3_reduced_features = pca3.fit_transform(features)
+    print(f"Total variance explained (3D): {np.sum(pca3.explained_variance_ratio_)}")
+
+    tsne2 = TSNE(n_components=2, perplexity=perplexity, random_state=42)
+    tsne2_reduced_features = tsne2.fit_transform(features)
+
+    tsne3 = TSNE(n_components=3, perplexity=perplexity, random_state=42)
+    tsne3_reduced_features = tsne3.fit_transform(features)
+
+    fig = plt.figure(1, figsize=figsize)
+
+    ax = fig.add_subplot(411)
+    scatter = ax.scatter(pca2_reduced_features[:, 0], pca2_reduced_features[:, 1], c=labels, cmap="tab20")
+    ax.set_title("PCA (2D)")
+
+    ax = fig.add_subplot(412, projection='3d', elev=-150, azim=110)
+    scatter = ax.scatter(
+        pca3_reduced_features[:, 0],
+        pca3_reduced_features[:, 1],
+        pca3_reduced_features[:, 2],
+        c=labels,
+        cmap="tab20"
+    )
+    ax.set_title("PCA (3D)")
+
+    ax = fig.add_subplot(413)
+    scatter = ax.scatter(tsne2_reduced_features[:, 0], tsne2_reduced_features[:, 1], c=labels, cmap="tab20")
+    ax.set_title("t-SNE (2D)")
+
+    ax = fig.add_subplot(414, projection='3d', elev=-150, azim=110)
+    scatter = ax.scatter(
+        tsne3_reduced_features[:, 0],
+        tsne3_reduced_features[:, 1],
+        tsne3_reduced_features[:, 2],
+        c=labels,
+        cmap="tab20"
+    )
+    ax.set_title("t-SNE (3D)")
+
+    handles, _ = scatter.legend_elements()
+    legend_labels = [class_names[i] for i in np.unique(labels)]
+    fig.legend(handles, legend_labels, loc='upper right', bbox_to_anchor=(1.25, 0.5), title="Classes")
+
+    plt.tight_layout()
     plt.show()
