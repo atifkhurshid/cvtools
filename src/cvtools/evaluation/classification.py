@@ -4,10 +4,11 @@ Evaluation functions for classification models.
 
 # Author: Atif Khurshid
 # Created: 2025-06-22
-# Modified: 2025-08-01
-# Version: 1.1
+# Modified: 2025-08-18
+# Version: 1.2
 # Changelog:
 #     - 2025-08-01: Added documentation and type hints.
+#     - 2025-08-18: Improved confusion matrix plotting.
 
 import numpy as np
 import seaborn as sns
@@ -19,7 +20,8 @@ def evaluate_classification(
         y_true: list | np.ndarray,
         y_pred: list | np.ndarray,
         class_names: list | None = None,
-        figsize: tuple[int, int] = (10, 8)
+        confusion: bool = True,
+        figsize: tuple[int, int] = (10, 8),
     ):
     """
     Evaluate classification model performance.
@@ -33,6 +35,8 @@ def evaluate_classification(
         Predicted labels by the model.
     class_names : list, optional
         Names of the classes. If None, uses integer labels.
+    confusion : bool, optional
+        Whether to display the confusion matrix. Default is True.
     figsize : tuple, optional
         Size of the confusion matrix plot.
     
@@ -49,11 +53,12 @@ def evaluate_classification(
 
     print(classification_report(y_true, y_pred, target_names=class_names))
 
-    confusion = confusion_matrix(y_true, y_pred)
-    plt.figure(figsize=figsize)
-    sns.heatmap(confusion, annot=True, fmt='d', cmap='Blues',
-                xticklabels=class_names, yticklabels=class_names)
-    plt.xlabel('Predicted')
-    plt.ylabel('True')
-    plt.title('Confusion Matrix')
-    plt.show()
+    if confusion:
+        confusion = confusion_matrix(y_true, y_pred)
+        plt.figure(figsize=figsize)
+        sns.heatmap(confusion, annot=True, fmt='d', cmap='Blues',
+                    xticklabels=class_names, yticklabels=class_names)
+        plt.xlabel('Predicted')
+        plt.ylabel('True')
+        plt.title('Confusion Matrix')
+        plt.show()
