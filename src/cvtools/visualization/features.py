@@ -1,14 +1,15 @@
 """
-PCA visualization module.
+Visualizations for feature vectors.
 """
 
 # Author: Atif Khurshid
 # Created: 2025-06-16
-# Modified: 2025-08-15
+# Modified: 2025-08-19
 # Version: 1.2
 # Changelog:
 #     - 2025-08-04: Add support for t-SNE visualization.
 #     - 2025-08-15: Add function to display all visualizations together.
+#     - 2025-08-19: Rename module file to features.py.
 
 import numpy as np
 import mpl_toolkits.mplot3d
@@ -114,7 +115,7 @@ def visualize_features(
     plt.show()
 
 
-def all_visualizations(
+def all_feature_visualizations(
         features: list[np.ndarray] | np.ndarray,
         labels: list | np.ndarray,
         class_names: list[str],
