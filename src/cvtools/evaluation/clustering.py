@@ -4,19 +4,21 @@ Evaluation functions for clustering models.
 
 # Author: Atif Khurshid
 # Created: 2025-06-22
-# Modified: 2025-08-14
-# Version: 1.3
+# Modified: 2025-08-19
+# Version: 1.4
 # Changelog:
 #     - 2025-08-01: Added documentation and type hints.
 #     - 2025-08-04: Scaled evaluation metrics.
 #     - 2025-08-14: Added Silhouette Score.
 #     - 2025-08-14: Added Accuracy, F1 Score, and Clustering Purity.
+#     - 2025-08-19: Added Maximum Cluster Assignment Index.
 
 from pprint import pprint
 
 import numpy as np
 from munkres import Munkres
 from scipy.special import comb
+from scipy.optimize import linear_sum_assignment
 from sklearn.metrics import silhouette_score
 from sklearn.metrics import adjusted_rand_score
 from sklearn.metrics import fowlkes_mallows_score
@@ -83,6 +85,7 @@ def evaluate_clustering(
     acc = clustering_accuracy(labels_true, labels_pred) * 100
     f1s = clustering_f_measure(labels_true, labels_pred) * 100
     pur = clustering_purity(labels_true, labels_pred) * 100
+    mca = adjusted_maximum_cluster_assignment_score(labels_true, labels_pred) * 100
     ari = adjusted_rand_score(labels_true, labels_pred) * 100
     nmi = adjusted_mutual_info_score(labels_true, labels_pred) * 100
     fms = fowlkes_mallows_score(labels_true, labels_pred) * 100
@@ -92,6 +95,7 @@ def evaluate_clustering(
         "Clustering Accuracy": float(acc),
         "F1 Score": float(f1s),
         "Clustering Purity": float(pur),
+        "Adjusted MCA Index": float(mca),
         "Adjusted Rand Index": float(ari),
         "Normalized Mutual Information": float(nmi),
         "Fowlkes-Mallows Score": float(fms),
@@ -232,3 +236,70 @@ def clustering_purity(
     purity = np.sum(np.amax(contingency, axis=0)) / np.sum(contingency)
 
     return purity
+
+
+def maximum_cluster_assignment_score(
+        labels_true: list | np.ndarray,
+        labels_pred: list | np.ndarray
+    ) -> float:
+    """
+    Compute the maximum cluster assignment (MCA) index.
+    Adapted from Kraus and Kestler BMC Bioinformatics 2010, 11:169
+    http://www.biomedcentral.com/1471-2105/11/169
+
+    Parameters
+    ----------
+    labels_true : list | np.ndarray
+        True labels of the data.
+    labels_pred : list | np.ndarray
+        Predicted labels by the clustering model.
+
+    Returns
+    -------
+    float
+        Maximum cluster assignment index.
+    """
+    classes_true = np.unique(labels_true)
+    classes_pred = np.unique(labels_pred)
+
+    similarity_matrix = np.zeros((len(classes_true), len(classes_pred)))
+    for i, true_class in enumerate(classes_true):
+        for j, pred_class in enumerate(classes_pred):
+            similarity_matrix[i, j] = np.sum((labels_true == true_class) & (labels_pred == pred_class))
+
+    true_ind, pred_ind = linear_sum_assignment(similarity_matrix, maximize=True)
+    mca = np.sum(similarity_matrix[true_ind, pred_ind]) / np.sum(similarity_matrix)
+
+    return mca
+
+
+def adjusted_maximum_cluster_assignment_score(
+        labels_true: list | np.ndarray,
+        labels_pred: list | np.ndarray
+    ) -> float:
+    """
+    Compute the MCA index adjusted for chance.
+    Adapted from Kraus and Kestler BMC Bioinformatics 2010, 11:169
+    http://www.biomedcentral.com/1471-2105/11/169
+
+    Parameters
+    ----------
+    labels_true : list | np.ndarray
+        True labels of the data.
+    labels_pred : list | np.ndarray
+        Predicted labels by the clustering model.
+
+    Returns
+    -------
+    float
+        Adjusted maximum cluster assignment index.
+    """    
+    I = maximum_cluster_assignment_score(labels_true, labels_pred)
+
+    classes_true = np.unique(labels_true)
+    labels_random = np.random.choice(classes_true, size=len(labels_true), replace=True)
+    EI = maximum_cluster_assignment_score(labels_true, labels_random)
+
+    I_cor = (I - EI) / (1 - EI)
+
+    return I_cor
