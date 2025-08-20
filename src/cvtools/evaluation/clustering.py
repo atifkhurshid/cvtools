@@ -26,7 +26,7 @@ from sklearn.metrics import adjusted_mutual_info_score
 from .metrics import clustering_accuracy
 from .metrics import clustering_f_measure
 from .metrics import clustering_purity
-from .metrics import adjusted_maximum_cluster_assignment_score
+from .metrics import maximum_cluster_assignment_score
 
 
 def evaluate_clustering(
@@ -88,7 +88,7 @@ def evaluate_clustering(
     acc = clustering_accuracy(labels_true, labels_pred) * 100
     f1s = clustering_f_measure(labels_true, labels_pred) * 100
     pur = clustering_purity(labels_true, labels_pred) * 100
-    mca = adjusted_maximum_cluster_assignment_score(labels_true, labels_pred) * 100
+    mca = maximum_cluster_assignment_score(labels_true, labels_pred) * 100
     ari = adjusted_rand_score(labels_true, labels_pred) * 100
     nmi = adjusted_mutual_info_score(labels_true, labels_pred) * 100
     fms = fowlkes_mallows_score(labels_true, labels_pred) * 100
