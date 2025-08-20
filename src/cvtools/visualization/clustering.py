@@ -138,6 +138,7 @@ def visualize_clustering_stability(
     for n_clusters, p in zip(n_clusters_list, pvalues):
         ax.text(n_clusters, 1.05, f"p={p:.3f}", ha='center', va='bottom', fontsize=12, color='black')
 
+    ax.set_ylim(0, 1.0)    
     ax.set_xticks(n_clusters_list, n_clusters_list)
     ax.set_xlabel('Number of clusters (K)')
     ax.set_ylabel('Score')
