@@ -1,3 +1,4 @@
 from .features import visualize_features
 from .features import all_feature_visualizations
 from .clustering import visualize_cluster_variability
+from .clustering import visualize_clustering_stability
