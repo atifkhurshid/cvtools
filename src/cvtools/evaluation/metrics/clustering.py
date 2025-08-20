@@ -4,10 +4,10 @@ Metrics for evaluating clustering models.
 
 # Author: Atif Khurshid
 # Created: 2025-08-19
-# Modified: None
-# Version: 1.0
+# Modified: 2025-08-20
+# Version: 1.1
 # Changelog:
-#     - None
+#     - 2025-08-20: Removed adjusted maximum cluster assignment score
 
 import numpy as np
 from munkres import Munkres
@@ -179,38 +179,6 @@ def maximum_cluster_assignment_score(
     mca = np.sum(similarity_matrix[true_ind, pred_ind]) / np.sum(similarity_matrix)
 
     return mca
-
-
-def adjusted_maximum_cluster_assignment_score(
-        labels_true: list | np.ndarray,
-        labels_pred: list | np.ndarray
-    ) -> float:
-    """
-    Compute the MCA index adjusted for chance.
-    Adapted from Kraus and Kestler BMC Bioinformatics 2010, 11:169
-    http://www.biomedcentral.com/1471-2105/11/169
-
-    Parameters
-    ----------
-    labels_true : list | np.ndarray
-        True labels of the data.
-    labels_pred : list | np.ndarray
-        Predicted labels by the clustering model.
-
-    Returns
-    -------
-    float
-        Adjusted maximum cluster assignment index.
-    """    
-    I = maximum_cluster_assignment_score(labels_true, labels_pred)
-
-    classes_true = np.unique(labels_true)
-    labels_random = np.random.choice(classes_true, size=len(labels_true), replace=True)
-    EI = maximum_cluster_assignment_score(labels_true, labels_random)
-
-    I_cor = (I - EI) / (1 - EI)
-
-    return I_cor
 
 
 def intra_cluster_variability(
