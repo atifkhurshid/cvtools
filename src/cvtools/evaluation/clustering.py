@@ -72,6 +72,7 @@ def evaluate_clustering(
     Clustering Accuracy: 66.67
     F1 Score: 66.67
     Clustering Purity: 66.67
+    MCA Index: 66.67
     Adjusted Rand Index: 66.7
     Normalized Mutual Information: 57.74
     Fowlkes-Mallows Score: 66.67
@@ -82,6 +83,7 @@ def evaluate_clustering(
         "Clustering Accuracy": 66.67,
         "F1 Score": 66.67,
         "Clustering Purity": 66.67,
+        "MCA Index": 66.67,
         "Adjusted Rand Index": 66.7,
         "Normalized Mutual Information": 57.74,
         "Fowlkes-Mallows Score": 66.67,
