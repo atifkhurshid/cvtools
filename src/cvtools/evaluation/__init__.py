@@ -1,2 +1,3 @@
 from .classification import evaluate_classification
 from .clustering import evaluate_clustering
+from .clustering import evaluate_clustering_stability
