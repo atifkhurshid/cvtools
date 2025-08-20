@@ -102,7 +102,7 @@ def evaluate_clustering(
         "Clustering Accuracy": float(acc),
         "F1 Score": float(f1s),
         "Clustering Purity": float(pur),
-        "Adjusted MCA Index": float(mca),
+        "MCA Index": float(mca),
         "Adjusted Rand Index": float(ari),
         "Normalized Mutual Information": float(nmi),
         "Fowlkes-Mallows Score": float(fms),
