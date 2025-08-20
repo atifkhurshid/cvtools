@@ -8,13 +8,48 @@ Metrics for evaluating clustering models.
 # Version: 1.1
 # Changelog:
 #     - 2025-08-20: Removed adjusted maximum cluster assignment score
+#     - 2025-08-20: Added modified version of silhouette score
 
 import numpy as np
 from munkres import Munkres
 from scipy.special import comb
 from scipy.optimize import linear_sum_assignment
 from sklearn.metrics import pairwise_distances
+from sklearn.metrics import silhouette_score as silhouette_score_
 from sklearn.metrics.cluster import contingency_matrix
+
+
+def silhouette_score(
+        features: np.ndarray,
+        labels: np.ndarray,
+        metric: str = "euclidean",
+        **kwargs: dict,
+    ) -> float:
+    """
+    Compute the silhouette score for clustering results.
+    This function uses the silhouette_score function from sklearn but it returns
+    0.0 if there is only one cluster.
+
+    Parameters
+    ----------
+    features : np.ndarray
+        The input features for clustering.
+    labels : np.ndarray
+        The predicted labels for the data.
+    metric : str
+        The distance metric to use for the silhouette score. Default is "euclidean".
+    **kwargs : dict
+        Additional keyword arguments for the silhouette score function.
+
+    Returns
+    -------
+    float
+        The silhouette score.
+    """
+    if len(np.unique(labels)) < 2:
+        return 0.0
+    else:
+        return silhouette_score_(features, labels, metric=metric, **kwargs)
 
 
 def clustering_accuracy(
