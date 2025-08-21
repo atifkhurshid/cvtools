@@ -209,7 +209,9 @@ def visualize_feature_distribution(
         features: np.ndarray,
         bins: int = 100,
         metric: str = "mean",
-        figsize: tuple[int, int] = (8, 6)
+        figsize: tuple[int, int] = (8, 6),
+        xlim: tuple[float, float] | None = None,
+        ylim: tuple[float, float] | None = None,
     ):
     """
     Visualize the distribution of features using a histogram.
@@ -225,6 +227,10 @@ def visualize_feature_distribution(
         Must be a numpy function e.g. np.mean.
     figsize : tuple[int, int], optional
         The size of the figure, default is (8, 6).
+    xlim : tuple[float, float] | None, optional
+        The x-axis limits, default is None.
+    ylim : tuple[float, float] | None, optional
+        The y-axis limits, default is None.
 
     Examples
     --------
@@ -238,7 +244,14 @@ def visualize_feature_distribution(
 
     plt.figure(figsize=figsize)
     sns.histplot(metric_fn(features, axis=0), bins=bins)
+    
     plt.title(f"Feature Distribution ({metric})")
     plt.xlabel("Feature Value")
     plt.ylabel("Frequency")
+
+    if xlim is not None:
+        plt.xlim(xlim)
+    if ylim is not None:
+        plt.ylim(ylim)
+
     plt.show()
