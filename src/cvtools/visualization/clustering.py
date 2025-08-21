@@ -21,7 +21,9 @@ def visualize_cluster_variability(
         features: np.ndarray,
         labels: np.ndarray,
         metric: str = 'euclidean',
-        figsize: tuple[int, int] = (7, 16),
+        figsize: tuple[int, int] = (14, 5),
+        cmap: str = 'viridis',
+        bar_width: float = 0.3,
     ):
     """
     Visualize the intra-cluster and inter-cluster variability.
@@ -34,6 +36,12 @@ def visualize_cluster_variability(
         Cluster labels of shape (n_samples,).
     metric : str, default='euclidean'
         Distance metric for pairwise_distances.
+    figsize : tuple[int, int], default=(14, 5)
+        Figure size for the plot.
+    cmap : str, default='viridis'
+        Colormap for the scatter plot.
+    bar_width : float, default=0.3
+        Width of the bars in the bar plot.
 
     Returns
     -------
@@ -46,14 +54,14 @@ def visualize_cluster_variability(
     separability = inter_vars / (intra_vars + 1e-8)  # avoid division by zero
 
 
-    fig, axes = plt.subplots(2, 1, figsize=figsize)
+    fig, axes = plt.subplots(1, 2, figsize=figsize)
 
     scatter = axes[0].scatter(
-        intra_vars, inter_vars, c=separability, cmap='viridis', s=100, edgecolor='k')
+        intra_vars, inter_vars, c=separability, cmap=cmap, s=500, edgecolor='k')
     
     for i, lbl in enumerate(unique_labels):
-        axes[0].annotate(str(lbl), (intra_vars[i], inter_vars[i]), fontsize=10, ha='left', va='bottom')
-    axes[0].set_xlabel('Within-Cluster Variability')
+        axes[0].annotate(str(lbl), (intra_vars[i], inter_vars[i]), color="k", fontsize=10, ha='center', va='center')
+    axes[0].set_xlabel('Intra-Cluster Variability')
     axes[0].set_ylabel('Inter-Cluster Variability')
     
     limit = max(np.max(intra_vars), np.max(inter_vars)) * 1.1
@@ -62,11 +70,14 @@ def visualize_cluster_variability(
 
     cbar = fig.colorbar(scatter, ax=axes[0])
 
-    axes[1].bar(unique_labels, separability)
-    axes[1].set_xlabel('Cluster ID')
-    axes[1].set_ylabel('Separability Ratio')
+    norm = plt.Normalize(separability.min(), separability.max())
+    colors = plt.get_cmap(cmap)(norm(separability))
 
-    plt.tight_layout()
+    axes[1].bar(unique_labels.astype(str), separability, width=bar_width, color=colors, edgecolor='k')
+    axes[1].set_xlabel('Cluster ID')
+    axes[1].set_ylabel('Separability Ratio (Inter / Intra)')
+
+    # plt.tight_layout()
     plt.show()
 
 
