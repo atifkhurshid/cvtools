@@ -5,14 +5,16 @@ Visualizations for feature vectors.
 # Author: Atif Khurshid
 # Created: 2025-06-16
 # Modified: 2025-08-21
-# Version: 1.2
+# Version: 1.3
 # Changelog:
-#     - 2025-08-04: Add support for t-SNE visualization.
-#     - 2025-08-15: Add function to display all visualizations together.
-#     - 2025-08-19: Rename module file to features.py.
-#     - 2025-08-21: Update visualization titles and labels for clarity.
+#     - 2025-08-04: Added support for t-SNE visualization.
+#     - 2025-08-15: Added function to display all visualizations together.
+#     - 2025-08-19: Renamed module file to features.py.
+#     - 2025-08-21: Updated visualization titles and labels for clarity.
+#     - 2025-08-22: Added function to visualize feature distribution.
 
 import numpy as np
+import seaborn as sns
 import mpl_toolkits.mplot3d
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
@@ -200,4 +202,43 @@ def all_feature_visualizations(
     fig.legend(handles, legend_labels, loc='upper right', bbox_to_anchor=(1.25, 0.5), title="Classes")
 
     plt.tight_layout()
+    plt.show()
+
+
+def visualize_feature_distribution(
+        features: np.ndarray,
+        bins: int = 100,
+        metric: str = "mean",
+        figsize: tuple[int, int] = (8, 6)
+    ):
+    """
+    Visualize the distribution of features using a histogram.
+
+    Parameters
+    ----------
+    features : np.ndarray
+        The input features to visualize.
+    bins : int, optional
+        The number of bins to use for the histogram, default is 100.
+    metric : str, optional
+        The reduction metric to use for the histogram, default is "mean".
+        Must be a numpy function e.g. np.mean.
+    figsize : tuple[int, int], optional
+        The size of the figure, default is (8, 6).
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from cvtools.visualization import visualize_feature_distribution
+    >>> features = np.random.rand(100, 50)  # 100 samples, 50 features
+    >>> visualize_feature_distribution(features, bins=100, metric="mean")
+    ... # This will display a histogram of the mean feature values.
+    """
+    metric_fn = getattr(np, metric)
+
+    plt.figure(figsize=figsize)
+    sns.histplot(metric_fn(features, axis=0), bins=bins)
+    plt.title(f"Feature Distribution ({metric})")
+    plt.xlabel("Feature Value")
+    plt.ylabel("Frequency")
     plt.show()
