@@ -4,10 +4,11 @@ Visualizations for clustering.
 
 # Author: Atif Khurshid
 # Created: 2025-08-19
-# Modified: 2025-08-20
-# Version: 1.1
+# Modified: 2025-08-21
+# Version: 1.2
 # Changelog:
 #     - 2025-08-20: Added clustering stability visualization.
+#     - 2025-08-21: Update cluster variability visualization.
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -20,7 +21,7 @@ def visualize_cluster_variability(
         features: np.ndarray,
         labels: np.ndarray,
         metric: str = 'euclidean',
-        figsize: tuple[int, int] = (16, 7),
+        figsize: tuple[int, int] = (7, 16),
     ):
     """
     Visualize the intra-cluster and inter-cluster variability.
@@ -45,7 +46,7 @@ def visualize_cluster_variability(
     separability = inter_vars / (intra_vars + 1e-8)  # avoid division by zero
 
 
-    fig, axes = plt.subplots(1, 2, figsize=figsize)
+    fig, axes = plt.subplots(2, 1, figsize=figsize)
 
     scatter = axes[0].scatter(
         intra_vars, inter_vars, c=separability, cmap='viridis', s=100, edgecolor='k')
@@ -53,7 +54,12 @@ def visualize_cluster_variability(
     for i, lbl in enumerate(unique_labels):
         axes[0].annotate(str(lbl), (intra_vars[i], inter_vars[i]), fontsize=10, ha='left', va='bottom')
     axes[0].set_xlabel('Within-Cluster Variability')
-    axes[0].set_ylabel('Between-Cluster Variability')
+    axes[0].set_ylabel('Inter-Cluster Variability')
+    
+    limit = max(np.max(intra_vars), np.max(inter_vars)) * 1.1
+    axes[0].set_xlim(0, limit)
+    axes[0].set_ylim(0, limit)
+
     cbar = fig.colorbar(scatter, ax=axes[0])
 
     axes[1].bar(unique_labels, separability)
