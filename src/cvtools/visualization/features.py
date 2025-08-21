@@ -4,12 +4,13 @@ Visualizations for feature vectors.
 
 # Author: Atif Khurshid
 # Created: 2025-06-16
-# Modified: 2025-08-19
+# Modified: 2025-08-21
 # Version: 1.2
 # Changelog:
 #     - 2025-08-04: Add support for t-SNE visualization.
 #     - 2025-08-15: Add function to display all visualizations together.
 #     - 2025-08-19: Rename module file to features.py.
+#     - 2025-08-21: Update visualization titles and labels for clarity.
 
 import numpy as np
 import mpl_toolkits.mplot3d
@@ -92,11 +93,11 @@ def visualize_features(
             c=labels,
             cmap="tab20"
         )
-        ax.set_zlabel('PC 3')
+        ax.set_zlabel('Component 3')
         ax.zaxis.set_ticklabels([])
 
-    ax.set_xlabel('PC 1')
-    ax.set_ylabel('PC 2')
+    ax.set_xlabel('Component 1')
+    ax.set_ylabel('Component 2')
     ax.xaxis.set_ticklabels([])
     ax.yaxis.set_ticklabels([])
 
@@ -168,7 +169,7 @@ def all_feature_visualizations(
 
     ax = fig.add_subplot(411)
     scatter = ax.scatter(pca2_reduced_features[:, 0], pca2_reduced_features[:, 1], c=labels, cmap="tab20")
-    ax.set_title("PCA (2D)")
+    ax.set_title("PCA (PoV: {:.2f})".format(np.sum(pca2.explained_variance_ratio_)))
 
     ax = fig.add_subplot(412, projection='3d', elev=-150, azim=110)
     scatter = ax.scatter(
@@ -178,11 +179,11 @@ def all_feature_visualizations(
         c=labels,
         cmap="tab20"
     )
-    ax.set_title("PCA (3D)")
+    ax.set_title("PCA (PoV: {:.2f})".format(np.sum(pca3.explained_variance_ratio_)))
 
     ax = fig.add_subplot(413)
     scatter = ax.scatter(tsne2_reduced_features[:, 0], tsne2_reduced_features[:, 1], c=labels, cmap="tab20")
-    ax.set_title("t-SNE (2D)")
+    ax.set_title("t-SNE (perplexity={})".format(perplexity))
 
     ax = fig.add_subplot(414, projection='3d', elev=-150, azim=110)
     scatter = ax.scatter(
@@ -192,7 +193,7 @@ def all_feature_visualizations(
         c=labels,
         cmap="tab20"
     )
-    ax.set_title("t-SNE (3D)")
+    ax.set_title("t-SNE (perplexity={})".format(perplexity))
 
     handles, _ = scatter.legend_elements()
     legend_labels = [class_names[i] for i in np.unique(labels)]
