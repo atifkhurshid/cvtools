@@ -4,14 +4,15 @@ Visualizations for feature vectors.
 
 # Author: Atif Khurshid
 # Created: 2025-06-16
-# Modified: 2025-08-21
-# Version: 1.3
+# Modified: 2025-08-22
+# Version: 1.4
 # Changelog:
 #     - 2025-08-04: Added support for t-SNE visualization.
 #     - 2025-08-15: Added function to display all visualizations together.
 #     - 2025-08-19: Renamed module file to features.py.
 #     - 2025-08-21: Updated visualization titles and labels for clarity.
-#     - 2025-08-22: Added function to visualize feature distribution.
+#     - 2025-08-21: Added function to visualize feature distribution.
+#     - 2025-08-22: Updated feature distribution visualization.
 
 import numpy as np
 import seaborn as sns
@@ -208,10 +209,10 @@ def all_feature_visualizations(
 def visualize_feature_distribution(
         features: np.ndarray,
         bins: int = 100,
-        metric: str = "mean",
         figsize: tuple[int, int] = (8, 6),
         xlim: tuple[float, float] | None = None,
         ylim: tuple[float, float] | None = None,
+        **kwargs: dict,
     ):
     """
     Visualize the distribution of features using a histogram.
@@ -222,32 +223,31 @@ def visualize_feature_distribution(
         The input features to visualize.
     bins : int, optional
         The number of bins to use for the histogram, default is 100.
-    metric : str, optional
-        The reduction metric to use for the histogram, default is "mean".
-        Must be a numpy function e.g. np.mean.
     figsize : tuple[int, int], optional
         The size of the figure, default is (8, 6).
     xlim : tuple[float, float] | None, optional
         The x-axis limits, default is None.
     ylim : tuple[float, float] | None, optional
         The y-axis limits, default is None.
+    kwargs : dict, optional
+        Additional keyword arguments to pass to seaborn's histogram function.
 
     Examples
     --------
     >>> import numpy as np
     >>> from cvtools.visualization import visualize_feature_distribution
     >>> features = np.random.rand(100, 50)  # 100 samples, 50 features
-    >>> visualize_feature_distribution(features, bins=100, metric="mean")
-    ... # This will display a histogram of the mean feature values.
+    >>> visualize_feature_distribution(features, bins=100)
+    ... # This will display a histogram of the feature values.
     """
-    metric_fn = getattr(np, metric)
+    if features.ndim > 1:
+        features = features.flatten()
 
     plt.figure(figsize=figsize)
-    sns.histplot(metric_fn(features, axis=0), bins=bins)
-    
-    plt.title(f"Feature Distribution ({metric})")
+    sns.histplot(features, bins=bins, **kwargs)
+
+    plt.title("Feature Distribution")
     plt.xlabel("Feature Value")
-    plt.ylabel("Frequency")
 
     if xlim is not None:
         plt.xlim(xlim)
