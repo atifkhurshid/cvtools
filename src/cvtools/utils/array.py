@@ -4,10 +4,10 @@ Numpy array utilities.
 
 # Author: Atif Khurshid
 # Created: 2025-07-04
-# Modified: None
-# Version: 1.0
+# Modified: 2025-08-27
+# Version: 1.1
 # Changelog:
-#     - None
+#     - Updated padding logic to allow specific sizes for padding.
 
 from collections import defaultdict
 
@@ -53,6 +53,7 @@ def group_arrays_by_shape(
 
 def pad_arrays_to_uniform_size(
         arrays: list[np.ndarray],
+        size: str | tuple[int, int] = "auto",
         mode: str = "constant",
         **kwargs: dict,
     ) -> np.ndarray:
@@ -63,6 +64,10 @@ def pad_arrays_to_uniform_size(
     ----------
     arrays : list of np.ndarray
         List of 2D numpy arrays to be padded.
+    size : str or tuple of int, optional
+        Target size for the padded arrays. Default is "auto", which means the size will be determined
+        by the largest array in the list. If a tuple is provided, it should be in the form
+        (height, width).
     mode : str, optional
         Padding mode. Default is "constant".
     **kwargs : dict, optional
@@ -77,15 +82,18 @@ def pad_arrays_to_uniform_size(
     ---------
     >>> arr1 = np.array([[1, 2], [3, 4]])
     >>> arr2 = np.array([[5, 6, 7], [8, 9, 10]])
-    >>> padded = pad_arrays_to_uniform_size([arr1, arr2], mode='constant', constant_values=0)
+    >>> padded = pad_arrays_to_uniform_size([arr1, arr2],  size="auto", mode='constant', constant_values=0)
     >>> print(padded)
     [[[ 1  2  0]
       [ 3  4  0]],
      [[ 5  6  7]
       [ 8  9 10]]]
     """
-    max_rows = max([arr.shape[0] for arr in arrays])
-    max_cols = max([arr.shape[1] for arr in arrays])
+    if size == "auto":
+        max_rows = max([arr.shape[0] for arr in arrays])
+        max_cols = max([arr.shape[1] for arr in arrays])
+    else:
+        max_rows, max_cols = size
 
     padded_arrays = []
     for arr in arrays:
