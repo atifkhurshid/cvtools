@@ -4,10 +4,10 @@ Base class for classification datasets.
 
 # Author: Atif Khurshid
 # Created: 2025-06-18
-# Modified: None
-# Version: 1.0
+# Modified: 2025-08-28
+# Version: 1.1
 # Changelog:
-#     - None
+#     - 2025-08-28: Fixed bug in class2index mapping
 
 
 class _ClassificationBase:
@@ -20,8 +20,8 @@ class _ClassificationBase:
 
         self.classes: list
         self.labels: list
-        self.class2label: dict
-        self.label2class: dict
+        self.class2index: dict
+        self.index2class: dict
 
 
     def __initialize__(self):
