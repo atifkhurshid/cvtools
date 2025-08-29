@@ -43,6 +43,7 @@ class PyTorchSequentialModel(PyTorchModel):
         """
         super().__init__()
 
+        self.layers = nn.ModuleList()
         for layer in layers:
             self.layers.append(layer)
 

@@ -4,20 +4,23 @@ Utility functions for PyTorch models.
 
 # Author: Atif Khurshid
 # Created: 2025-06-22
-# Modified: 2025-08-08
-# Version: 1.3
+# Modified: 2025-08-29
+# Version: 1.5
 # Changelog:
 #     - 2025-08-01: Added type hints and documentation.
 #     - 2025-08-01: Updated training loop to include epochs.
 #     - 2025-08-08: Added feature map saving functionality.
+#     - 2025-08-29: Updated training and evaluation functions.
+#     - 2025-08-29: Added training history visualization.
 
 from pathlib import Path
 
 import torch
 import numpy as np
 import torch.nn as nn
+import matplotlib.pyplot as plt
 from tqdm import tqdm
-from torch.utils.data import DataLoader
+from torch.utils.data import Dataset, DataLoader, Subset
 from sklearn.metrics import classification_report
 
 from .model import PyTorchModel
@@ -129,12 +132,16 @@ def save_feature_maps(
 
 def evaluate_classification_model(
         model: PyTorchModel,
-        dataloader: DataLoader,
-        device: str,
+        dataset: Dataset,
+        batch_size: int,
+        num_batches: int | None = None,
+        shuffle: bool = False,
         report: bool = True,
-    ) -> float | None:
+        pbar: bool = True,
+        **kwargs: dict,
+    ) -> tuple[float, float, np.ndarray, np.ndarray]:
     """
-    Evaluate a classification model on the given dataloader.
+    Evaluate a classification model on the given dataset.
 
     Requires the model to implement the `eval_step` method.
 
@@ -142,18 +149,27 @@ def evaluate_classification_model(
     -----------
     model : PyTorchModel
         The PyTorch model to evaluate.
-    dataloader : DataLoader
-        DataLoader containing the dataset.
-    device : str
-        Device to run the model on (e.g., 'cpu' or 'cuda').
+    dataset : Dataset
+        Dataset containing the data to evaluate.
+    batch_size : int
+        Batch size to use for evaluation.
+    num_batches : int | None
+        Number of batches to use for evaluation. If None, use all batches.
+        Default is None.
+    shuffle : bool
+        Whether to shuffle the data before evaluation. Default is False.
     report : bool
-        Whether to print the classification report.
+        Whether to print the classification report. Default is True.
+    pbar : bool
+        Whether to show a progress bar during evaluation. Default is True.
+    **kwargs : dict
+        Additional keyword arguments passed to the DataLoader.
 
     Returns
     --------
-    float | None
-        The average loss over the dataset if report is False, otherwise None.
-    
+    tuple[float, float]
+        The loss and metric values for the evaluation.
+
     Examples
     ---------
     >>> model = PyTorchSequentialModel([
@@ -161,41 +177,50 @@ def evaluate_classification_model(
     ...     nn.ReLU(),
     ...     nn.Linear(20, 1)
     ... ])
-    >>> dataloader = DataLoader(dataset, batch_size=32)
-    >>> loss = evaluate_classification_model(model, dataloader, device='cuda', report=True)
-    >>> print(f"Average Loss: {loss:.4f}")
+    >>> evaluate_classification_model(model, dataset, batch_size=32)
     """
-    model = model.to(device)
     model.eval()
+
+    if num_batches is not None:
+        indices = np.random.choice(len(dataset), num_batches * batch_size, replace=False)
+        dataset = Subset(dataset, indices)
+
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, **kwargs)
 
     n_batches = len(dataloader)
     y_pred, y_true = [], []
-    loss = 0
+    loss = 0.0
     with torch.no_grad():
-        for X, y in tqdm(dataloader, total=n_batches):
-            X = X.to(device)
-            y = y.to(device)
+        for X, y in tqdm(dataloader, total=n_batches, disable=not pbar):
             batch_pred, batch_loss = model.eval_step(X, y)
-            y_pred.extend(batch_pred)
-            y_true.extend(y)
+            y_pred.extend(batch_pred.numpy())
+            y_true.extend(y.numpy())
             loss += batch_loss
 
     loss /= n_batches
+    metric = model.compute_metric()
+
+    y_pred = np.array(y_pred)
+    y_true = np.array(y_true)
 
     if report:
-        print(f"Test Loss: {loss:>7f}")
+        print(f"Test Loss: {loss:>7f}, Test Metric: {metric:>7f}")
         print(classification_report(y_true, y_pred))
-    else:
-        return loss
+
+    return loss, metric, y_pred, y_true
 
 
-def train_model(
+def train_classification_model(
         model: PyTorchModel,
-        train_dataloader: DataLoader,
-        device: str,
+        train_dataset: Dataset,
         epochs: int = 1,
-        val_dataloader: DataLoader | None = None,
-    ):
+        batch_size: int = 32,
+        shuffle_train: bool = True,
+        val_dataset: Dataset | None = None,
+        val_batches: int | None = 10,
+        shuffle_val: bool = False,
+        **kwargs: dict,
+    ) -> dict:
     """
     Train a PyTorch classification model using the provided dataloader.
 
@@ -205,15 +230,29 @@ def train_model(
     -----------
     model : PyTorchModel
         The PyTorch model to train.
-    train_dataloader : DataLoader
-        DataLoader containing the training dataset.
-    device : str
-        Device to run the model on (e.g., 'cpu' or 'cuda').
+    train_dataset : Dataset
+        Dataset containing the training data.
     epochs : int
-        Number of epochs to train the model.
-    val_dataloader : DataLoader | None
-        DataLoader containing the validation dataset. If None, no validation is performed.
-    
+        Number of epochs to train the model. Default is 1.
+    batch_size : int
+        Batch size to use for training. Default is 32.
+    shuffle_train : bool
+        Whether to shuffle the training data. Default is True.
+    val_dataset : Dataset | None
+        Dataset containing the validation data. If None, no validation is performed.
+        Default is None.
+    val_batches : int | None
+        Number of batches to use for validation. Default is 10.
+    shuffle_val : bool
+        Whether to shuffle the validation data. Default is False.
+    **kwargs : dict
+        Additional keyword arguments passed to the DataLoader.
+
+    Returns
+    -------
+    dict
+        A dictionary containing the training history.
+
     Examples
     ---------
     >>> model = PyTorchSequentialModel([
@@ -221,26 +260,101 @@ def train_model(
     ...     nn.ReLU(),
     ...     nn.Linear(20, 1)
     ... ])
-    >>> train_dataloader = DataLoader(train_dataset, batch_size=32)
-    >>> val_dataloader = DataLoader(val_dataset, batch_size=32)
-    >>> train_model(model, train_dataloader, device='cuda', epochs=10, val_dataloader=val_dataloader)
-    >>> print("Training complete.")
+    >>> train_classification_model(model, train_dataset, val_dataset=val_dataset)
     """
-    model = model.to(device)
+    history = {
+        'train_loss': [],
+        'val_loss': [],
+        'train_metric': [],
+        'val_metric': []
+    }
+
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle_train, **kwargs)
 
     for epoch in range(epochs):
         model.train()
+
         train_loss = 0.0
+        train_metric = 0.0
         val_loss = 0.0
+        val_metric = 0.0
 
         for X, y in tqdm(train_dataloader, total=len(train_dataloader), desc=f"Epoch {epoch+1}/{epochs}"):
-            X = X.to(device)
-            y = y.to(device)
-
             batch_loss = model.train_step(X, y)
-            train_loss += batch_loss.item()
+            train_loss += batch_loss
 
-        if val_dataloader is not None:
-            val_loss = evaluate_classification_model(model, val_dataloader, device, report=False)
+        train_loss /= len(train_dataloader)
+        train_metric = model.compute_metric()
 
-        print(f"Epoch {epoch+1}/{epochs}, Train Loss: {train_loss/len(train_dataloader)}, Val Loss: {val_loss}")
+        if val_dataset is not None:
+            val_loss, val_metric, _, _ = evaluate_classification_model(
+                model, val_dataset, batch_size, val_batches, shuffle_val, report=False, pbar=False, **kwargs)
+
+        history['train_loss'].append(train_loss)
+        history['val_loss'].append(val_loss)
+        history['train_metric'].append(train_metric)
+        history['val_metric'].append(val_metric)
+
+        print("Epoch {}/{}, Train Loss: {:<.4f}, Train Metric: {:<.4f}, Val Loss: {:<.4f}, Val Metric: {:<.4f}".format(
+            epoch+1, epochs, train_loss, train_metric, val_loss, val_metric))
+    
+    return history
+
+
+def plot_training_history(
+        history: dict,
+        loss_name: str = "Loss",
+        loss_ylim: tuple = (0, 1),
+        metric_name: str = "Metric",
+        metric_ylim: tuple = (0, 1),
+        figsize: tuple = (12, 6),
+    ):
+    """
+    Plots the training history of a PyTorch model.
+
+    Parameters
+    ----------
+    history : dict
+        A dictionary containing the training history.
+    loss_name : str
+        The name of the loss metric.
+    loss_ylim : tuple
+        The y-axis limits for the loss plot.
+    metric_name : str
+        The name of the metric.
+    metric_ylim : tuple
+        The y-axis limits for the metric plot.
+    figsize : tuple
+        The size of the figure.
+
+    Examples
+    ---------
+    >>> history = {
+    ...     'train_loss': [0.1, 0.2, 0.3],
+    ...     'val_loss': [0.2, 0.3, 0.4],
+    ...     'train_metric': [0.9, 0.8, 0.7],
+    ...     'val_metric': [0.8, 0.7, 0.6]
+    ... }
+    >>> plot_training_history(history)
+    """
+
+    epochs = range(1, len(history['train_loss']) + 1)
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=figsize)
+
+    ax1.plot(epochs, history['train_loss'], label=f'Train {loss_name}')
+    ax1.plot(epochs, history['val_loss'], label=f'Val {loss_name}')
+    ax1.set_xlabel('Epochs')
+    ax1.set_ylabel(loss_name)
+    ax1.set_ylim(loss_ylim)
+    ax1.legend()
+
+    ax2.plot(epochs, history['train_metric'], label=f'Train {metric_name}')
+    ax2.plot(epochs, history['val_metric'], label=f'Val {metric_name}')
+    ax2.set_xlabel('Epochs')
+    ax2.set_ylabel(metric_name)
+    ax2.set_ylim(metric_ylim)
+    ax2.legend()
+
+    plt.tight_layout()
+    plt.show()
