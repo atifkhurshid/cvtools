@@ -4,12 +4,13 @@ Visualizations for clustering.
 
 # Author: Atif Khurshid
 # Created: 2025-08-19
-# Modified: 2025-08-27
-# Version: 1.3
+# Modified: 2025-09-02
+# Version: 1.4
 # Changelog:
 #     - 2025-08-20: Added clustering stability visualization.
-#     - 2025-08-21: Update cluster variability visualization.
-#     - 2025-08-27: Update cluster variability visualization.
+#     - 2025-08-21: Updated cluster variability visualization.
+#     - 2025-08-27: Updated cluster variability visualization.
+#     - 2025-09-02: Changed separability index calculations.
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -24,10 +25,9 @@ def visualize_cluster_variability(
         labels: np.ndarray,
         metric: str = 'euclidean',
         figsize: tuple[int, int] = (14, 5),
-        cmap: str = 'viridis',
+        cmap: str = 'RdYlGn',
         bar_width: float = 0.3,
         variability_limits: tuple[float, float] | None = None,
-        separability_limits: tuple[float, float] | None = None
     ):
     """
     Visualize the intra-cluster and inter-cluster variability.
@@ -48,8 +48,6 @@ def visualize_cluster_variability(
         Width of the bars in the bar plot.
     variability_limits : tuple[float, float] | None, optional
         Limits for the variability plot. Default is None.
-    separability_limits : tuple[float, float] | None, optional
-        Limits for the separability plot. Default is None.
 
     Returns
     -------
@@ -59,24 +57,23 @@ def visualize_cluster_variability(
 
     intra_vars = intra_cluster_variability(features, labels, metric=metric)
     inter_vars = inter_cluster_variability(features, labels, metric=metric)
-    separability = inter_vars / (intra_vars + 1e-8)  # avoid division by zero
+
+    separability = (inter_vars - intra_vars) / (inter_vars + intra_vars + 1e-8)
 
     fig, axes = plt.subplots(1, 2, figsize=figsize)
 
     if variability_limits is None:
         variability_limits = 0, max(np.max(intra_vars), np.max(inter_vars)) * 1.1
-    if separability_limits is None:
-        separability_limits = 0, np.max(separability) * 1.1
 
-    norm = plt.Normalize(separability_limits[0], separability_limits[1])
+    norm = plt.Normalize(-1, 1)
 
     scatter = axes[0].scatter(
         intra_vars, inter_vars, c=separability, cmap=cmap, norm=norm, s=500, edgecolor='k')
 
     for i, lbl in enumerate(unique_labels):
         axes[0].annotate(str(lbl), (intra_vars[i], inter_vars[i]), color="k", fontsize=10, ha='center', va='center')
-    axes[0].set_xlabel('Intra-Cluster Variability')
-    axes[0].set_ylabel('Inter-Cluster Variability')
+    axes[0].set_xlabel('Within-Cluster Variability')
+    axes[0].set_ylabel('Between-Cluster Variability')
     axes[0].set_xlim(variability_limits)
     axes[0].set_ylim(variability_limits)
 
@@ -84,13 +81,13 @@ def visualize_cluster_variability(
     cbar = fig.colorbar(cm.ScalarMappable(norm=norm, cmap=cmap), ax=axes[0])
     colors = plt.get_cmap(cmap)(norm(separability))
 
-    axes[1].bar(unique_labels.astype(str), separability, width=bar_width, color=colors, edgecolor='k')
+    axes[1].bar(unique_labels.astype(str), np.maximum(0, separability), width=bar_width, color=colors, edgecolor='k')
     axes[1].set_xlabel('Cluster ID')
-    axes[1].set_ylabel('Separability Ratio (Inter / Intra)')
-    axes[1].set_ylim(separability_limits)
+    axes[1].set_ylabel('Separability Index')
+    axes[1].set_ylim(0, 1.1)
 
     plt.show()
-
+    
 
 def visualize_clustering_stability(
         clustering_scores: np.ndarray,
