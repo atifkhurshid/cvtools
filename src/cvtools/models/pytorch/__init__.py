@@ -1,5 +1,6 @@
 from .model import PyTorchModel
 from .sequential import PyTorchSequentialModel
+from .layers import L2Norm
 from .utils import extract_features
 from .utils import evaluate_classification_model
 from .utils import train_classification_model
