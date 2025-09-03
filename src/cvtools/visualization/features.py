@@ -198,7 +198,7 @@ def all_feature_visualizations(
     )
     ax.set_title("t-SNE (perplexity={})".format(perplexity))
 
-    handles, _ = scatter.legend_elements()
+    handles, _ = scatter.legend_elements(num=None)
     legend_labels = [class_names[i] for i in np.unique(labels)]
     fig.legend(handles, legend_labels, loc='upper right', bbox_to_anchor=(1.25, 0.5), title="Classes")
 
