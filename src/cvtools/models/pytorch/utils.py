@@ -4,7 +4,7 @@ Utility functions for PyTorch models.
 
 # Author: Atif Khurshid
 # Created: 2025-06-22
-# Modified: 2025-08-29
+# Modified: 2025-09-04
 # Version: 1.5
 # Changelog:
 #     - 2025-08-01: Added type hints and documentation.
@@ -12,6 +12,7 @@ Utility functions for PyTorch models.
 #     - 2025-08-08: Added feature map saving functionality.
 #     - 2025-08-29: Updated training and evaluation functions.
 #     - 2025-08-29: Added training history visualization.
+#     - 2025-09-04: Added learning rate scheduling.
 
 from pathlib import Path
 
@@ -21,6 +22,7 @@ import torch.nn as nn
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from torch.utils.data import Dataset, DataLoader, Subset
+from torch.optim.lr_scheduler import LRScheduler
 from sklearn.metrics import classification_report
 
 from .model import PyTorchModel
@@ -219,6 +221,7 @@ def train_classification_model(
         val_dataset: Dataset | None = None,
         val_batches: int | None = 10,
         shuffle_val: bool = False,
+        scheduler: LRScheduler | None = None,
         **kwargs: dict,
     ) -> dict:
     """
@@ -245,6 +248,8 @@ def train_classification_model(
         Number of batches to use for validation. Default is 10.
     shuffle_val : bool
         Whether to shuffle the validation data. Default is False.
+    scheduler : LRScheduler | None
+        Learning rate scheduler to use. Default is None.
     **kwargs : dict
         Additional keyword arguments passed to the DataLoader.
 
@@ -282,6 +287,9 @@ def train_classification_model(
         for X, y in tqdm(train_dataloader, total=len(train_dataloader), desc=f"Epoch {epoch+1}/{epochs}"):
             batch_loss = model.train_step(X, y)
             train_loss += batch_loss
+
+        if scheduler is not None:
+            scheduler.step()
 
         train_loss /= len(train_dataloader)
         train_metric = model.compute_metric()
