@@ -4,15 +4,17 @@ Base class for PyTorch models.
 
 # Author: Atif Khurshid
 # Created: 2025-06-22
-# Modified: 2025-08-29
+# Modified: 2025-09-04
 # Version: 2.0
 # Changelog:
 #     - 2025-08-29: Added training and evaluation steps.
+#     - 2025-09-04: Added scheduler support.
 
 import torch
 import numpy as np
 import torch.nn as nn
 from torch.optim import Optimizer
+from torch.optim.lr_scheduler import LRScheduler
 from torcheval.metrics.metric import Metric
 
 
@@ -27,6 +29,7 @@ class PyTorchModel(nn.Module):
         self.configured: bool
         self.loss: nn.Module
         self.optimizer: Optimizer
+        self.scheduler: LRScheduler
         self.metric: Metric
         self.device: str
 
@@ -35,6 +38,7 @@ class PyTorchModel(nn.Module):
             self,
             loss: nn.Module,
             optimizer: Optimizer,
+            scheduler: LRScheduler,
             metric: Metric,
             device: str = "cpu",
         ):
@@ -52,6 +56,7 @@ class PyTorchModel(nn.Module):
         """
         self.loss = loss
         self.optimizer = optimizer
+        self.scheduler = scheduler
         self.metric = metric
         self.device = device
         self.configured = True
@@ -160,3 +165,10 @@ class PyTorchModel(nn.Module):
 
         return metric.item()
     
+
+    def on_epoch_end(self):
+        """
+        Function to be called at the end of each epoch.
+        """
+        if self.scheduler is not None:
+            self.scheduler.step()

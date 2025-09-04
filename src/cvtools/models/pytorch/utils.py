@@ -12,7 +12,7 @@ Utility functions for PyTorch models.
 #     - 2025-08-08: Added feature map saving functionality.
 #     - 2025-08-29: Updated training and evaluation functions.
 #     - 2025-08-29: Added training history visualization.
-#     - 2025-09-04: Added learning rate scheduling.
+#     - 2025-09-04: Added on_epoch_end function call in training loop.
 
 from pathlib import Path
 
@@ -221,7 +221,6 @@ def train_classification_model(
         val_dataset: Dataset | None = None,
         val_batches: int | None = 10,
         shuffle_val: bool = False,
-        scheduler: LRScheduler | None = None,
         **kwargs: dict,
     ) -> dict:
     """
@@ -248,8 +247,6 @@ def train_classification_model(
         Number of batches to use for validation. Default is 10.
     shuffle_val : bool
         Whether to shuffle the validation data. Default is False.
-    scheduler : LRScheduler | None
-        Learning rate scheduler to use. Default is None.
     **kwargs : dict
         Additional keyword arguments passed to the DataLoader.
 
@@ -288,9 +285,6 @@ def train_classification_model(
             batch_loss = model.train_step(X, y)
             train_loss += batch_loss
 
-        if scheduler is not None:
-            scheduler.step()
-
         train_loss /= len(train_dataloader)
         train_metric = model.compute_metric()
 
@@ -305,7 +299,9 @@ def train_classification_model(
 
         print("Epoch {}/{}, Train Loss: {:<.4f}, Train Metric: {:<.4f}, Val Loss: {:<.4f}, Val Metric: {:<.4f}".format(
             epoch+1, epochs, train_loss, train_metric, val_loss, val_metric))
-    
+
+        model.on_epoch_end()
+
     return history
 
 
