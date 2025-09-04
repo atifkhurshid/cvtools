@@ -29,7 +29,7 @@ class PyTorchModel(nn.Module):
         self.configured: bool
         self.loss: nn.Module
         self.optimizer: Optimizer
-        self.scheduler: LRScheduler
+        self.scheduler: LRScheduler | None
         self.metric: Metric
         self.device: str
 
@@ -38,8 +38,8 @@ class PyTorchModel(nn.Module):
             self,
             loss: nn.Module,
             optimizer: Optimizer,
-            scheduler: LRScheduler,
             metric: Metric,
+            scheduler: LRScheduler | None = None,
             device: str = "cpu",
         ):
         """
@@ -53,6 +53,10 @@ class PyTorchModel(nn.Module):
             The optimizer to use.
         metric : callable
             The metric to use for evaluation.
+        scheduler : torch.optim.lr_scheduler.LRScheduler, optional
+            The learning rate scheduler to use, by default None.
+        device : str, optional
+            The device to use, by default "cpu".
         """
         self.loss = loss
         self.optimizer = optimizer
