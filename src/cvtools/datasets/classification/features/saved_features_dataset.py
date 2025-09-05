@@ -4,10 +4,10 @@ Dataloader for saved feature maps.
 
 # Author: Atif Khurshid
 # Created: 2025-08-08
-# Modified: None
-# Version: 1.0
+# Modified: 2025-09-05
+# Version: 2.0
 # Changelog:
-#     - None
+#     - 2025-09-05: Simplified class functionality to focus on loading saved features only.
 
 from pathlib import Path
 
@@ -16,75 +16,75 @@ import numpy as np
 from .._base import _ClassificationBase
 
 
-class SavedFeaturesDataset(_ClassificationBase):
+class SavedFeaturesDataset():
 
     def __init__(
             self,
+            dataset: _ClassificationBase,
             features_dir: str,
-            class_names: list[str] | None = None
         ):
         """
         Dataset for loading saved feature maps and their corresponding labels.
 
         Parameters
         ----------
+        dataset : _ClassificationBase
+            Original dataset used to extract features.
         features_dir : str
-            Directory containing the saved feature maps and labels.
-        class_names : list[str] | None, optional
-            List of class names corresponding to the labels. If None, classes will be inferred from the labels.
-        
-        Attributes
-        ----------
-        feature_files : list
-            List of paths to the feature files.
-        label_files : list
-            List of paths to the label files.
+            Directory containing the saved feature maps.
         
         Examples
         --------
-        >>> dataset = SavedFeatureMaps("path/to/features")
-        >>> len(dataset)
-        10
-        >>> features, labels = dataset[0]
-        >>> features.shape
-        (32, 512, 64, 64)
-        >>> labels.shape
-        (32,)
+        >>> import os
+        >>> import torch
+        >>> import numpy as np
+        >>> from torchvision import transforms
+        >>> from torch.utils.data import DataLoader
+        >>> from cvtools.models.pytorch import extract_feature_maps
+        >>> from cvtools.datasets.classification import SavedFeaturesDataset
+        >>> from cvtools.datasets.classification.pytorch import ClassificationDatasetPT
+        >>> # Define transformations
+        >>> transform = transforms.Compose([
+        ...     transforms.Resize((224, 224)),
+        ...     transforms.ToTensor(),
+        ... ])
+        >>> # Load original dataset
+        >>> dataset = ClassificationDatasetPT(
+        ...     images_dir='path/to/images',
+        ...     transform=transform,
+        ... )
+        >>> # Define model for feature extraction
+        >>> # Extract and save feature maps
+        >>> extract_feature_maps(
+        ...     model=model,
+        ...     dataset=dataset,
+        ...     save_dir='path/to/save/features',
+        ...     batch_size=32,
+        ... )
+        >>> # Load saved features dataset
+        >>> features_dataset = SavedFeaturesDataset(
+        ...     dataset=dataset,
+        ...     features_dir='path/to/save/features',
+        ... )
+        >>> # Access a batch of features and labels
+        >>> features, labels = features_dataset[0]
+        >>> print(features.shape, labels.shape)
+        (32, 512) (32,)
         """
+        self.dataset = dataset
         self.features_dir = Path(features_dir)
-        self.feature_files = sorted(self.features_dir.glob("features_batch_*.npy"))
-        self.label_files = sorted(self.features_dir.glob("labels_batch_*.npy"))
-
-        assert len(self.feature_files) == len(self.label_files), \
-            "Number of feature files and label files must match."
-
-        self.labels = []
-        for label_file in self.label_files:
-            labels = np.load(label_file)
-            self.labels.extend(labels.tolist())
-        self.labels = np.array(self.labels)
-
-        unique_labels = np.unique(self.labels)
-        if class_names is not None:
-            assert len(class_names) == len(unique_labels), \
-                "Number of class names must match number of unique labels."
-            self.classes = class_names
-        else:
-            self.classes = [f"Class {i}" for i in unique_labels]
-
-        self.__initialize__()
 
 
     def __len__(self) -> int:
         """
         Returns the number of feature files in the dataset.
         """
-        return len(self.feature_files)
+        return len(self.dataset)
 
 
-    def __getitem__(self, index: int) -> tuple[np.ndarray, np.ndarray]:
+    def __getitem__(self, index: int) -> tuple[np.ndarray, int]:
         """
-        Returns a batch of feature and label tensors for a given index.
+        Returns a feature and corresponding label for a given index.
 
         Parameters
         ----------
@@ -96,7 +96,19 @@ class SavedFeaturesDataset(_ClassificationBase):
         tuple[np.ndarray, np.ndarray]
             A tuple containing the batch of feature tensors and the label tensors.
         """
-        features = np.load(self.feature_files[index])
-        labels = np.load(self.label_files[index])
+        feature = np.load(self.features_dir / f"features_{index}.npy")
+        label = self.dataset.labels[index]
 
-        return features, labels
+        return feature, label
+
+
+    def __getattr__(self, name: str):
+        """
+        Delegate attribute access to the underlying dataset.
+
+        Parameters
+        ----------
+        name : str
+            Name of the attribute to access.
+        """
+        return getattr(self.dataset, name)

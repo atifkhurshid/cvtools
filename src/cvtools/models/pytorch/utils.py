@@ -4,8 +4,8 @@ Utility functions for PyTorch models.
 
 # Author: Atif Khurshid
 # Created: 2025-06-22
-# Modified: 2025-09-04
-# Version: 1.5
+# Modified: 2025-09-05
+# Version: 1.6
 # Changelog:
 #     - 2025-08-01: Added type hints and documentation.
 #     - 2025-08-01: Updated training loop to include epochs.
@@ -13,6 +13,7 @@ Utility functions for PyTorch models.
 #     - 2025-08-29: Updated training and evaluation functions.
 #     - 2025-08-29: Added training history visualization.
 #     - 2025-09-04: Added on_epoch_end function call in training loop.
+#     - 2025-09-05: Changed feature map extraction function.
 
 from pathlib import Path
 
@@ -21,9 +22,8 @@ import numpy as np
 import torch.nn as nn
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-from torch.utils.data import Dataset, DataLoader, Subset
-from torch.optim.lr_scheduler import LRScheduler
 from sklearn.metrics import classification_report
+from torch.utils.data import Dataset, DataLoader, Subset
 
 from .model import PyTorchModel
 
@@ -84,23 +84,26 @@ def extract_features(
 
 def save_feature_maps(
         model: nn.Module,
-        dataloader: DataLoader,
+        dataset: Dataset,
         save_dir: str,
-        device: str,
+        batch_size: int = 32,
+        device: str = 'cpu',
     ) -> None:
     """
-    Save the output feature maps from the model for each batch in the dataloader.
+    Save the output feature maps from the model for each image in the dataset.
 
-    Feature maps and labels are saved as separate `.npy` files for each batch.
-    
+    Feature maps are saved as separate `.npy` files for each image.
+
     Parameters
     -----------
     model : nn.Module
         The PyTorch model to extract feature maps from.
-    dataloader : DataLoader
-        DataLoader containing the dataset.
+    dataset : Dataset
+        Dataset containing the images.
     save_path : str
-        Path where the feature maps and labels will be saved.
+        Path where the feature maps will be saved.
+    batch_size : int
+        Batch size to use for processing the dataset. Default is 32.
     device : str
         Device to run the model on (e.g., 'cpu' or 'cuda').
 
@@ -110,8 +113,7 @@ def save_feature_maps(
     ...     nn.Conv2d(10, 20, kernel_size=3),
     ...     nn.ReLU(),
     ... ])
-    >>> dataloader = DataLoader(dataset, batch_size=32)
-    >>> save_feature_maps(model, dataloader, save_path='features', device='cuda')
+    >>> save_feature_maps(model, dataset, save_path='features', device='cuda')
     """
     save_dir = Path(save_dir)
     save_dir.mkdir(parents=True, exist_ok=True)
@@ -119,17 +121,18 @@ def save_feature_maps(
     model = model.to(device)
     model.eval()
 
-    for batch, (X, y) in tqdm(enumerate(dataloader), total=len(dataloader)):
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+    index = 0
+    for X, _ in tqdm(dataloader, total=len(dataloader)):
         X = X.to(device)
         with torch.no_grad():
-            f = model(X)
+            features = model(X)
 
-        features = f.cpu().numpy()
-        labels = y.cpu().numpy()
+        features = features.cpu().numpy()
 
-        # Save features and labels to files
-        np.save(save_dir / f"features_batch_{batch}.npy", features)
-        np.save(save_dir / f"labels_batch_{batch}.npy", labels)
+        for i in range(features.shape[0]):
+            np.save(save_dir / f"features_{index}.npy", features[i])
+            index += 1
 
 
 def evaluate_classification_model(

@@ -4,10 +4,11 @@ PyTorch Wrapper for saved features dataloader
 
 # Author: Atif Khurshid
 # Created: 2025-08-08
-# Modified: 2025-08-15
+# Modified: 2025-09-05
 # Version: 1.1
 # Changelog:
 #     - 2025-08-15: Added support for transforms.
+#     - 2025-09-05: Updated according to changes in SavedFeaturesDataset.
 
 import torch
 from torch.utils.data import Dataset
@@ -34,14 +35,14 @@ class SavedFeaturesDatasetPT(SavedFeaturesDataset, Dataset):
             
         Examples
         --------
-        >>> dataset = SavedFeaturesDatasetPT("path/to/features")
+        >>> dataset = SavedFeaturesDatasetPT(images_dataset, "path/to/features")
         >>> len(dataset)
         10
-        >>> features, labels = dataset[0]
-        >>> features.shape
-        (32, 512, 64, 64)
-        >>> labels.shape
-        (32,)
+        >>> feature, label = dataset[0]
+        >>> feature.shape
+        (512, 64, 64)
+        >>> label
+        3
         """
         self.transform = kwargs.pop("transform", None)
         self.target_transform = kwargs.pop("target_transform", None)
@@ -51,7 +52,7 @@ class SavedFeaturesDatasetPT(SavedFeaturesDataset, Dataset):
 
     def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
         """
-        Get a batch of features and labels for a given index.
+        Get the feature map and label for a given index.
 
         Parameters
         ----------
@@ -61,17 +62,17 @@ class SavedFeaturesDatasetPT(SavedFeaturesDataset, Dataset):
         Returns
         -------
         tuple[torch.Tensor, torch.Tensor]
-            A tuple containing the batch of feature tensors and the label tensors.
+            A tuple containing the feature tensor and the label tensor.
         """
-        features, labels = super().__getitem__(index)
+        feature, label = super().__getitem__(index)
 
-        features = torch.tensor(features, dtype=torch.float32)
-        labels = torch.tensor(labels, dtype=torch.long)
+        feature = torch.tensor(feature, dtype=torch.float32)
+        label = torch.tensor(label, dtype=torch.long)
 
         if self.transform is not None:
-            features = self.transform(features)
+            feature = self.transform(feature)
 
         if self.target_transform is not None:
-            labels = self.target_transform(labels)
+            label = self.target_transform(label)
 
-        return features, labels
+        return feature, label
