@@ -1,9 +1,9 @@
 """
-PyTorch wrapper for Scenes dataloader.
+PyTorch wrapper for 15-category Scenes dataloader.
 """
 
 # Author: Atif Khurshid
-# Created: 2025-09-03
+# Created: 2025-09-05
 # Modified: None
 # Version: 1.0
 # Changelog:
@@ -13,20 +13,20 @@ import torch
 from torch.utils.data import Dataset
 from torchvision.transforms.v2 import ToImage
 
-from .scenes import ScenesDataset
+from .scenes15 import Scenes15Dataset
 
 
-class ScenesDatasetPT(ScenesDataset, Dataset):
+class Scenes15DatasetPT(Scenes15Dataset, Dataset):
     def __init__(self, *args, **kwargs):
         """
-        PyTorch wrapper class for the Scenes dataset.
+        PyTorch wrapper class for the 15-category Scenes dataset.
 
         Parameters
         ----------
         *args : tuple
-            Positional arguments passed to the ScenesDataset constructor.
+            Positional arguments passed to the Scenes15Dataset constructor.
         **kwargs : dict
-            Keyword arguments passed to the ScenesDataset constructor.
+            Keyword arguments passed to the Scenes15Dataset constructor.
             - transform: torchvision.transforms.v2.Transform, optional
                 Transform to apply to the images.
             - target_transform: callable, optional
@@ -34,8 +34,8 @@ class ScenesDatasetPT(ScenesDataset, Dataset):
 
         Examples
         --------
-        >>> from cvtools.datasets import ScenesDatasetPT
-        >>> dataset = ScenesDatasetPT(root_dir='path/to/scenes', transform=ToDType(torch.float32))
+        >>> from cvtools.datasets import Scenes15DatasetPT
+        >>> dataset = Scenes15DatasetPT(root_dir='path/to/scenes', transform=ToDType(torch.float32))
         >>> dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
         >>> for X, y in dataloader:
         ...     # Process each batch of images and labels

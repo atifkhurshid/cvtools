@@ -1,5 +1,6 @@
 """
-Dataloader for Scenes dataset from Oliva & Torralba (2001): https://people.csail.mit.edu/torralba/code/spatialenvelope/
+Dataloader for 8-category Scenes dataset from Oliva & Torralba (2001)
+Link: https://people.csail.mit.edu/torralba/code/spatialenvelope/
 """
 
 # Author: Atif Khurshid
@@ -18,7 +19,7 @@ from ....image import imread
 
 
 
-class ScenesDataset(_ClassificationBase):
+class Scenes8Dataset(_ClassificationBase):
     def __init__(
             self,
             root_dir: str,
@@ -26,9 +27,9 @@ class ScenesDataset(_ClassificationBase):
             preserve_aspect_ratio: bool = True,
         ):
         """
-        Scenes dataset loader.
+        8-category Scenes dataset loader.
 
-        This class loads images and labels from the Scenes dataset.
+        This class loads images and labels from the 8-category Scenes dataset.
         The dataset is expected to be organized with all images in
         in a single "images" folder within the root directory and
         filenames in the format "classname_*.jpg".
@@ -46,21 +47,17 @@ class ScenesDataset(_ClassificationBase):
         ----------
         images_dir : str
             Path to the directory containing the images.
-        filepaths : list
-            List of filepaths to the images.
+        filenames : list
+            List of filenames of the images.
         labels : list
             List of class labels corresponding to the images.
         classes : list
             List of unique class labels in the dataset.
-        label2index : dict
-            Mapping from class labels to indices.
-        index2label : dict
-            Mapping from indices to class labels.
 
         Examples
         --------
-        >>> from cvtools.datasets import ScenesDataset
-        >>> dataset = ScenesDataset(root_dir='path/to/scenes', image_size=(224, 224))
+        >>> from cvtools.datasets import Scenes8Dataset
+        >>> dataset = Scenes8Dataset(root_dir='path/to/scenes', image_size=(224, 224))
         >>> for img, label in dataset:
         ...     # Process each image and label
         ...     pass
