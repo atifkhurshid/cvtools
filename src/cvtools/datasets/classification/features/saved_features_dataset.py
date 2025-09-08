@@ -97,7 +97,7 @@ class SavedFeaturesDataset():
             A tuple containing the batch of feature tensors and the label tensors.
         """
         feature = np.load(self.features_dir / f"features_{index}.npy")
-        label = self.dataset.labels[index]
+        label = self.class_name_to_index(self.labels[index])
 
         return feature, label
 
