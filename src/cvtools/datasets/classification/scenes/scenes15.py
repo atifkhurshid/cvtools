@@ -98,6 +98,6 @@ class Scenes15Dataset(_ClassificationBase):
         with Image.open(path) as image:
             if self.image_size:
                 image = imresize(image, self.image_size, self.preserve_aspect_ratio)
-            image = np.asarray(image)
+            image = np.asarray(image, copy=True)
 
         return image, self.class_name_to_index(label)
