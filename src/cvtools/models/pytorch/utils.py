@@ -23,6 +23,7 @@ import torch.nn as nn
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from sklearn.metrics import classification_report
+from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import Dataset, DataLoader, Subset
 
 from .model import PyTorchModel
@@ -224,8 +225,11 @@ def train_classification_model(
         val_dataset: Dataset | None = None,
         val_batches: int | None = 10,
         shuffle_val: bool = False,
+        writer: SummaryWriter | None = None,
+        log_interval: int = 10,
+        iteration_num: int = 0,
         **kwargs: dict,
-    ) -> dict:
+    ) -> int:
     """
     Train a PyTorch classification model using the provided dataloader.
 
@@ -250,13 +254,20 @@ def train_classification_model(
         Number of batches to use for validation. Default is 10.
     shuffle_val : bool
         Whether to shuffle the validation data. Default is False.
+    writer : SummaryWriter | None
+        TensorBoard SummaryWriter for logging. If None, no logging is performed.
+        Default is None.
+    log_interval : int
+        Interval (in steps) at which to log training progress. Default is 10.
+    iteration_num : int
+        Starting iteration number for logging. Default is 0.
     **kwargs : dict
         Additional keyword arguments passed to the DataLoader.
-
+    
     Returns
     -------
-    dict
-        A dictionary containing the training history.
+    int
+        The final iteration number after training.
 
     Examples
     ---------
@@ -267,13 +278,6 @@ def train_classification_model(
     ... ])
     >>> train_classification_model(model, train_dataset, val_dataset=val_dataset)
     """
-    history = {
-        'train_loss': [],
-        'val_loss': [],
-        'train_metric': [],
-        'val_metric': []
-    }
-
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle_train, **kwargs)
 
     for epoch in range(epochs):
@@ -281,87 +285,43 @@ def train_classification_model(
 
         train_loss = 0.0
         train_metric = 0.0
-        val_loss = 0.0
-        val_metric = 0.0
+
+        if writer is not None:
+            writer.add_scalar('Learning Rate', model.get_learning_rate(), iteration_num)
 
         for X, y in tqdm(train_dataloader, total=len(train_dataloader), desc=f"Epoch {epoch+1}/{epochs}"):
             batch_loss = model.train_step(X, y)
-            train_loss += batch_loss
+            batch_metric = model.compute_metric()
 
-        train_loss /= len(train_dataloader)
-        train_metric = model.compute_metric()
+            train_loss += batch_loss
+            train_metric += batch_metric
+
+            if writer is not None and iteration_num % log_interval == 0:
+                writer.add_scalar('Train Loss', batch_loss, iteration_num)
+                writer.add_scalar('Train Metric', batch_metric, iteration_num)
+
+            iteration_num += 1
 
         if val_dataset is not None:
             val_loss, val_metric, _, _ = evaluate_classification_model(
                 model, val_dataset, batch_size, val_batches, shuffle_val, report=False, pbar=False, **kwargs)
+            
+            if writer is not None:
+                writer.add_scalar('Val Loss', val_loss, iteration_num)
+                writer.add_scalar('Val Metric', val_metric, iteration_num)
 
-        history['train_loss'].append(train_loss)
-        history['val_loss'].append(val_loss)
-        history['train_metric'].append(train_metric)
-        history['val_metric'].append(val_metric)
+        if writer is not None:
+            writer.close()
 
-        print("Epoch {}/{}, Train Loss: {:<.4f}, Train Metric: {:<.4f}, Val Loss: {:<.4f}, Val Metric: {:<.4f}".format(
-            epoch+1, epochs, train_loss, train_metric, val_loss, val_metric))
+        train_loss /= len(train_dataloader)
+        train_metric /= len(train_dataloader)
+
+        print(f"Epoch {epoch+1}/{epochs}, ", end="")
+        print(f"Train Loss: {train_loss:.4f}, Train Metric: {train_metric:.4f}, ", end="")
+        if val_dataset is not None:
+            print(f"Val Loss: {val_loss:.4f}, Val Metric: {val_metric:.4f}", end="")
+        print()
 
         model.on_epoch_end()
-
-    return history
-
-
-def plot_training_history(
-        history: dict,
-        loss_name: str = "Loss",
-        loss_ylim: tuple = (0, 1),
-        metric_name: str = "Metric",
-        metric_ylim: tuple = (0, 1),
-        figsize: tuple = (12, 6),
-    ):
-    """
-    Plots the training history of a PyTorch model.
-
-    Parameters
-    ----------
-    history : dict
-        A dictionary containing the training history.
-    loss_name : str
-        The name of the loss metric.
-    loss_ylim : tuple
-        The y-axis limits for the loss plot.
-    metric_name : str
-        The name of the metric.
-    metric_ylim : tuple
-        The y-axis limits for the metric plot.
-    figsize : tuple
-        The size of the figure.
-
-    Examples
-    ---------
-    >>> history = {
-    ...     'train_loss': [0.1, 0.2, 0.3],
-    ...     'val_loss': [0.2, 0.3, 0.4],
-    ...     'train_metric': [0.9, 0.8, 0.7],
-    ...     'val_metric': [0.8, 0.7, 0.6]
-    ... }
-    >>> plot_training_history(history)
-    """
-
-    epochs = range(1, len(history['train_loss']) + 1)
-
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=figsize)
-
-    ax1.plot(epochs, history['train_loss'], label=f'Train {loss_name}')
-    ax1.plot(epochs, history['val_loss'], label=f'Val {loss_name}')
-    ax1.set_xlabel('Epochs')
-    ax1.set_ylabel(loss_name)
-    ax1.set_ylim(loss_ylim)
-    ax1.legend()
-
-    ax2.plot(epochs, history['train_metric'], label=f'Train {metric_name}')
-    ax2.plot(epochs, history['val_metric'], label=f'Val {metric_name}')
-    ax2.set_xlabel('Epochs')
-    ax2.set_ylabel(metric_name)
-    ax2.set_ylim(metric_ylim)
-    ax2.legend()
-
-    plt.tight_layout()
-    plt.show()
+    
+    return iteration_num

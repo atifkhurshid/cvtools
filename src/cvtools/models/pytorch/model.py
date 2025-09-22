@@ -176,3 +176,15 @@ class PyTorchModel(nn.Module):
         """
         if self.scheduler is not None:
             self.scheduler.step()
+
+
+    def get_learning_rate(self) -> float:
+        """
+        Get the current learning rate.
+
+        Returns
+        -------
+        float
+            The current learning rate.
+        """
+        return self.optimizer.param_groups[0]['lr']
