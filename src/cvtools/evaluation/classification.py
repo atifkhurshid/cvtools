@@ -51,7 +51,7 @@ def evaluate_classification(
     if class_names is None:
         class_names = [str(i) for i in range(len(np.unique(y_true)))]
 
-    print(classification_report(y_true, y_pred, target_names=class_names))
+    print(classification_report(y_true, y_pred, target_names=class_names, digits=4, zero_division=0))
 
     if confusion:
         confusion = confusion_matrix(y_true, y_pred)
