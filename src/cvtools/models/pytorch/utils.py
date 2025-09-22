@@ -211,7 +211,7 @@ def evaluate_classification_model(
 
     if report:
         print(f"Test Loss: {loss:>7f}, Test Metric: {metric:>7f}")
-        print(classification_report(y_true, y_pred))
+        print(classification_report(y_true, y_pred, digits=4, zero_division=0))
 
     return loss, metric, y_pred, y_true
 
