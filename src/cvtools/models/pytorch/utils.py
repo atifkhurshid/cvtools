@@ -4,8 +4,8 @@ Utility functions for PyTorch models.
 
 # Author: Atif Khurshid
 # Created: 2025-06-22
-# Modified: 2025-09-05
-# Version: 1.6
+# Modified: 2025-09-22
+# Version: 1.7
 # Changelog:
 #     - 2025-08-01: Added type hints and documentation.
 #     - 2025-08-01: Updated training loop to include epochs.
@@ -14,19 +14,20 @@ Utility functions for PyTorch models.
 #     - 2025-08-29: Added training history visualization.
 #     - 2025-09-04: Added on_epoch_end function call in training loop.
 #     - 2025-09-05: Changed feature map extraction function.
+#     - 2025-09-22: Changed validation logic in training function.
 
 from pathlib import Path
 
 import torch
 import numpy as np
 import torch.nn as nn
-import matplotlib.pyplot as plt
 from tqdm import tqdm
 from sklearn.metrics import classification_report
 from torch.utils.tensorboard import SummaryWriter
-from torch.utils.data import Dataset, DataLoader, Subset
+from torch.utils.data import Dataset, DataLoader
 
 from .model import PyTorchModel
+from ...utils.pytorch import InfiniteDataLoader
 
 
 def extract_features(
@@ -138,13 +139,9 @@ def save_feature_maps(
 
 def evaluate_classification_model(
         model: PyTorchModel,
-        dataset: Dataset,
-        batch_size: int,
-        num_batches: int | None = None,
-        shuffle: bool = False,
+        data: DataLoader | tuple,
         report: bool = True,
         pbar: bool = True,
-        **kwargs: dict,
     ) -> tuple[float, float, np.ndarray, np.ndarray]:
     """
     Evaluate a classification model on the given dataset.
@@ -155,26 +152,17 @@ def evaluate_classification_model(
     -----------
     model : PyTorchModel
         The PyTorch model to evaluate.
-    dataset : Dataset
-        Dataset containing the data to evaluate.
-    batch_size : int
-        Batch size to use for evaluation.
-    num_batches : int | None
-        Number of batches to use for evaluation. If None, use all batches.
-        Default is None.
-    shuffle : bool
-        Whether to shuffle the data before evaluation. Default is False.
+    data : DataLoader | tuple 
+        DataLoader containing the evaluation data or a tuple (X, y).
     report : bool
         Whether to print the classification report. Default is True.
     pbar : bool
         Whether to show a progress bar during evaluation. Default is True.
-    **kwargs : dict
-        Additional keyword arguments passed to the DataLoader.
 
     Returns
     --------
-    tuple[float, float]
-        The loss and metric values for the evaluation.
+    tuple[float, float, np.ndarray, np.ndarray]
+        The loss and metric values for the evaluation, along with the predicted and true labels.
 
     Examples
     ---------
@@ -183,52 +171,50 @@ def evaluate_classification_model(
     ...     nn.ReLU(),
     ...     nn.Linear(20, 1)
     ... ])
-    >>> evaluate_classification_model(model, dataset, batch_size=32)
+    >>> evaluate_classification_model(model, dataloader)
     """
     model.eval()
+    model.metric.reset()
 
-    if num_batches is not None:
-        indices = np.random.choice(len(dataset), num_batches * batch_size, replace=False)
-        dataset = Subset(dataset, indices)
+    if isinstance(data, DataLoader):
+        n_batches = len(data)
+        y_pred, y_true = [], []
+        loss = 0.0
+        with torch.no_grad():
+            for X, y in tqdm(data, total=n_batches, disable=not pbar):
+                batch_pred, batch_loss = model.eval_step(X, y)
+                y_pred.extend(batch_pred.numpy())
+                y_true.extend(y.numpy())
+                loss += batch_loss
+        y_pred = np.array(y_pred)
+        y_true = np.array(y_true)
+        loss /= n_batches
+    else:
+        X, y = data
+        with torch.no_grad():
+            y_pred, loss = model.eval_step(X, y)
+        y_pred = y_pred.numpy()
+        y_true = y.numpy()
 
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, **kwargs)
-
-    n_batches = len(dataloader)
-    y_pred, y_true = [], []
-    loss = 0.0
-    with torch.no_grad():
-        for X, y in tqdm(dataloader, total=n_batches, disable=not pbar):
-            batch_pred, batch_loss = model.eval_step(X, y)
-            y_pred.extend(batch_pred.numpy())
-            y_true.extend(y.numpy())
-            loss += batch_loss
-
-    loss /= n_batches
     metric = model.compute_metric()
-
-    y_pred = np.array(y_pred)
-    y_true = np.array(y_true)
 
     if report:
         print(f"Test Loss: {loss:>7f}, Test Metric: {metric:>7f}")
         print(classification_report(y_true, y_pred, digits=4, zero_division=0))
+
+    model.train()
 
     return loss, metric, y_pred, y_true
 
 
 def train_classification_model(
         model: PyTorchModel,
-        train_dataset: Dataset,
+        train_dataloader: DataLoader,
         epochs: int = 1,
-        batch_size: int = 32,
-        shuffle_train: bool = True,
-        val_dataset: Dataset | None = None,
-        val_batches: int | None = 10,
-        shuffle_val: bool = False,
+        val_dataloader: DataLoader | None = None,
         writer: SummaryWriter | None = None,
         log_interval: int = 10,
         iteration_num: int = 0,
-        **kwargs: dict,
     ) -> int:
     """
     Train a PyTorch classification model using the provided dataloader.
@@ -239,21 +225,13 @@ def train_classification_model(
     -----------
     model : PyTorchModel
         The PyTorch model to train.
-    train_dataset : Dataset
-        Dataset containing the training data.
+    train_dataloader : DataLoader
+        DataLoader containing the training data.
     epochs : int
         Number of epochs to train the model. Default is 1.
-    batch_size : int
-        Batch size to use for training. Default is 32.
-    shuffle_train : bool
-        Whether to shuffle the training data. Default is True.
-    val_dataset : Dataset | None
-        Dataset containing the validation data. If None, no validation is performed.
+    val_dataloader : DataLoader | None
+        DataLoader containing the validation data. If None, no validation is performed.
         Default is None.
-    val_batches : int | None
-        Number of batches to use for validation. Default is 10.
-    shuffle_val : bool
-        Whether to shuffle the validation data. Default is False.
     writer : SummaryWriter | None
         TensorBoard SummaryWriter for logging. If None, no logging is performed.
         Default is None.
@@ -261,8 +239,6 @@ def train_classification_model(
         Interval (in steps) at which to log training progress. Default is 10.
     iteration_num : int
         Starting iteration number for logging. Default is 0.
-    **kwargs : dict
-        Additional keyword arguments passed to the DataLoader.
     
     Returns
     -------
@@ -276,15 +252,18 @@ def train_classification_model(
     ...     nn.ReLU(),
     ...     nn.Linear(20, 1)
     ... ])
-    >>> train_classification_model(model, train_dataset, val_dataset=val_dataset)
+    >>> train_classification_model(model, train_dataloader, val_dataloader=val_dataloader)
     """
-    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle_train, **kwargs)
+    if val_dataloader is not None:
+        val_dataloader = InfiniteDataLoader(val_dataloader)
 
     for epoch in range(epochs):
         model.train()
 
-        train_loss = 0.0
-        train_metric = 0.0
+        train_loss = []
+        val_loss = []
+        train_metric = []
+        val_metric = []
 
         if writer is not None:
             writer.add_scalar('Learning Rate', model.get_learning_rate(), iteration_num)
@@ -292,36 +271,44 @@ def train_classification_model(
         for X, y in tqdm(train_dataloader, total=len(train_dataloader), desc=f"Epoch {epoch+1}/{epochs}"):
             batch_loss = model.train_step(X, y)
             batch_metric = model.compute_metric()
+            train_loss.append(batch_loss)
+            train_metric.append(batch_metric)
 
-            train_loss += batch_loss
-            train_metric += batch_metric
+            if iteration_num % log_interval == 0:
 
-            if writer is not None and iteration_num % log_interval == 0:
-                writer.add_scalar('Train Loss', batch_loss, iteration_num)
-                writer.add_scalar('Train Metric', batch_metric, iteration_num)
+                if writer is not None:
+                    writer.add_scalar('Train Loss', batch_loss, iteration_num)
+                    writer.add_scalar('Train Metric', batch_metric, iteration_num)
+
+                if val_dataloader is not None:
+                    val_batch = next(val_dataloader)
+                    batch_loss, batch_metric, _, _ = evaluate_classification_model(
+                        model, val_batch, report=False, pbar=False)
+                    val_loss.append(batch_loss)
+                    val_metric.append(batch_metric)
+
+                    if writer is not None:
+                        writer.add_scalar('Val Loss', batch_loss, iteration_num)
+                        writer.add_scalar('Val Metric', batch_metric, iteration_num)
 
             iteration_num += 1
-
-        if val_dataset is not None:
-            val_loss, val_metric, _, _ = evaluate_classification_model(
-                model, val_dataset, batch_size, val_batches, shuffle_val, report=False, pbar=False, **kwargs)
-            
-            if writer is not None:
-                writer.add_scalar('Val Loss', val_loss, iteration_num)
-                writer.add_scalar('Val Metric', val_metric, iteration_num)
 
         if writer is not None:
             writer.close()
 
-        train_loss /= len(train_dataloader)
-        train_metric /= len(train_dataloader)
+        train_loss = np.mean(train_loss)
+        train_metric = np.mean(train_metric)
 
         print(f"Epoch {epoch+1}/{epochs}, ", end="")
         print(f"Train Loss: {train_loss:.4f}, Train Metric: {train_metric:.4f}, ", end="")
-        if val_dataset is not None:
+        if val_dataloader is not None:
+            val_loss = np.mean(val_loss)
+            val_metric = np.mean(val_metric)
             print(f"Val Loss: {val_loss:.4f}, Val Metric: {val_metric:.4f}", end="")
         print()
 
         model.on_epoch_end()
     
+    model.eval()
+
     return iteration_num
