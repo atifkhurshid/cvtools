@@ -4,12 +4,13 @@ Dataloader for NIH Chest X-Ray dataset: https://nihcc.app.box.com/v/ChestXray-NI
 
 # Author: Atif Khurshid
 # Created: 2025-05-20
-# Modified: 2025-05-23
-# Version: 2.1
+# Modified: 2025-09-29
+# Version: 2.2
 # Changelog:
 #     - 2025-05-22: Add image_size parameter for resizing images
 #     - 2025-05-22: Remove pytorch dependency and refactor code
 #     - 2025-05-23: Add translation between class names and labels
+#     - 2025-05-29: Add labels as an attribute
 
 import os
 
@@ -25,6 +26,7 @@ class CXRDataset(_ClassificationBase):
             self,
             root_dir: str,
             image_size: tuple[int, int] | None=None,
+            preserve_aspect_ratio: bool=False,
             train: bool=True,
             binary: bool=True
     ):
@@ -71,6 +73,7 @@ class CXRDataset(_ClassificationBase):
         """
         self.root_dir = root_dir
         self.image_size = image_size    # (height, width)
+        self.preserve_aspect_ratio = preserve_aspect_ratio
 
         self.images_dir = os.path.join(self.root_dir, 'images')
         if not os.path.exists(self.images_dir):
@@ -98,6 +101,7 @@ class CXRDataset(_ClassificationBase):
         if binary:
             self.data['Finding Labels'] = self.data['Finding Labels'].apply(lambda x: "Normal" if x == 'No Finding' else "Abnormal")
 
+        self.labels = self.data['Finding Labels'].tolist()
         self.classes = sorted(self.data['Finding Labels'].unique().tolist())
 
         self.__initialize__()
@@ -122,9 +126,14 @@ class CXRDataset(_ClassificationBase):
         img_path = os.path.join(self.images_dir, str(self.data.loc[index, 'Image Index']))
 
         # Read image as grayscale
-        image = imread(img_path, mode="L", size=self.image_size)
+        image = imread(
+            img_path,
+            mode="L",
+            size=self.image_size,
+            preserve_aspect_ratio=self.preserve_aspect_ratio,
+        )
 
         # Read label from the DataFrame and convert to index
-        label = self.class_name_to_index(str(self.data.loc[index, 'Finding Labels']))
+        label = self.class_name_to_index(self.labels[index])
 
         return image, label
