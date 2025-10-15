@@ -26,12 +26,14 @@ class PyTorchModel(nn.Module):
         """
         super().__init__()
 
-        self.configured: bool
         self.loss: nn.Module
         self.optimizer: Optimizer
         self.scheduler: LRScheduler | None
         self.metric: Metric
         self.device: str
+
+        self.configured: bool = False
+        self.training_samples_seen: int = 0
 
 
     def configure_training(
@@ -98,6 +100,8 @@ class PyTorchModel(nn.Module):
         self.optimizer.step()
 
         self.metric.update(outputs, y)
+
+        self.training_samples_seen += len(X)
 
         return loss.item()
     

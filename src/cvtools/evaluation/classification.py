@@ -22,6 +22,10 @@ def evaluate_classification(
         class_names: list | None = None,
         confusion: bool = True,
         figsize: tuple[int, int] = (10, 8),
+        report: bool = False,
+        digits: int = 4,
+        zero_division: int = 0,
+        **kwargs: dict,
     ):
     """
     Evaluate classification model performance.
@@ -39,6 +43,19 @@ def evaluate_classification(
         Whether to display the confusion matrix. Default is True.
     figsize : tuple, optional
         Size of the confusion matrix plot.
+    report : bool, optional
+        Whether to return the classification report as a dictionary. Default is False.
+    digits : int, optional
+        Number of decimal places for formatting in the report. Default is 4.
+    zero_division : int, optional
+        Sets the value to return when there is a zero division. Default is 0.
+    **kwargs : dict
+        Additional keyword arguments for sklearn's classification_report.
+    
+    Returns
+    -------
+    dict or None
+        If report is True, returns the classification report as a dictionary.
     
     Examples
     ---------
@@ -51,7 +68,8 @@ def evaluate_classification(
     if class_names is None:
         class_names = [str(i) for i in range(len(np.unique(y_true)))]
 
-    print(classification_report(y_true, y_pred, target_names=class_names, digits=4, zero_division=0))
+    print(classification_report(
+        y_true, y_pred, target_names=class_names, digits=digits, zero_division=zero_division, **kwargs))
 
     if confusion:
         confusion = confusion_matrix(y_true, y_pred)
@@ -62,3 +80,11 @@ def evaluate_classification(
         plt.ylabel('True')
         plt.title('Confusion Matrix')
         plt.show()
+
+    if report:
+        report = classification_report(
+            y_true, y_pred, target_names=class_names, digits=digits,
+            zero_division=zero_division, output_dict=True, **kwargs)
+        
+        return report
+    

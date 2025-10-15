@@ -4,8 +4,8 @@ Utility functions for PyTorch models.
 
 # Author: Atif Khurshid
 # Created: 2025-06-22
-# Modified: 2025-09-22
-# Version: 1.7
+# Modified: 2025-10-15
+# Version: 1.8
 # Changelog:
 #     - 2025-08-01: Added type hints and documentation.
 #     - 2025-08-01: Updated training loop to include epochs.
@@ -15,15 +15,16 @@ Utility functions for PyTorch models.
 #     - 2025-09-04: Added on_epoch_end function call in training loop.
 #     - 2025-09-05: Changed feature map extraction function.
 #     - 2025-09-22: Changed validation logic in training function.
+#     - 2025-10-15: Replaced tensorboard with wandb for logging.
 
 from pathlib import Path
 
+import wandb
 import torch
 import numpy as np
 import torch.nn as nn
 from tqdm import tqdm
 from sklearn.metrics import classification_report
-from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import Dataset, DataLoader
 
 from .model import PyTorchModel
@@ -212,10 +213,9 @@ def train_classification_model(
         train_dataloader: DataLoader,
         epochs: int = 1,
         val_dataloader: DataLoader | None = None,
-        writer: SummaryWriter | None = None,
+        run: wandb.Run | None = None,
         log_interval: int = 10,
-        iteration_num: int = 0,
-    ) -> int:
+    ):
     """
     Train a PyTorch classification model using the provided dataloader.
 
@@ -232,18 +232,11 @@ def train_classification_model(
     val_dataloader : DataLoader | None
         DataLoader containing the validation data. If None, no validation is performed.
         Default is None.
-    writer : SummaryWriter | None
-        TensorBoard SummaryWriter for logging. If None, no logging is performed.
+    run : wandb.Run | None
+        Weights & Biases run for logging. If None, no logging is performed.
         Default is None.
     log_interval : int
         Interval (in steps) at which to log training progress. Default is 10.
-    iteration_num : int
-        Starting iteration number for logging. Default is 0.
-    
-    Returns
-    -------
-    int
-        The final iteration number after training.
 
     Examples
     ---------
@@ -260,55 +253,48 @@ def train_classification_model(
     for epoch in range(epochs):
         model.train()
 
-        train_loss = []
-        val_loss = []
-        train_metric = []
-        val_metric = []
+        epoch_loss_train = []
+        epoch_loss_val = []
+        epoch_metric_train = []
+        epoch_metric_val = []
 
-        if writer is not None:
-            writer.add_scalar('Learning Rate', model.get_learning_rate(), iteration_num)
+        for i, (X, y) in tqdm(enumerate(train_dataloader),
+                              total=len(train_dataloader), desc=f"Epoch {epoch+1}/{epochs}"):
+            batch_loss_train = model.train_step(X, y)
+            batch_metric_train = model.compute_metric()
+            epoch_loss_train.append(batch_loss_train)
+            epoch_metric_train.append(batch_metric_train)
 
-        for X, y in tqdm(train_dataloader, total=len(train_dataloader), desc=f"Epoch {epoch+1}/{epochs}"):
-            batch_loss = model.train_step(X, y)
-            batch_metric = model.compute_metric()
-            train_loss.append(batch_loss)
-            train_metric.append(batch_metric)
-
-            if iteration_num % log_interval == 0:
-
-                if writer is not None:
-                    writer.add_scalar('Train Loss', batch_loss, iteration_num)
-                    writer.add_scalar('Train Metric', batch_metric, iteration_num)
+            if i % log_interval == 0:
 
                 if val_dataloader is not None:
-                    val_batch = next(val_dataloader)
-                    batch_loss, batch_metric, _, _ = evaluate_classification_model(
-                        model, val_batch, report=False, pbar=False)
-                    val_loss.append(batch_loss)
-                    val_metric.append(batch_metric)
+                    X, y = next(val_dataloader)
+                    batch_loss_val, batch_metric_val, _, _ = evaluate_classification_model(
+                        model, (X, y), report=False, pbar=False)
+                    epoch_loss_val.append(batch_loss_val)
+                    epoch_metric_val.append(batch_metric_val)
 
-                    if writer is not None:
-                        writer.add_scalar('Val Loss', batch_loss, iteration_num)
-                        writer.add_scalar('Val Metric', batch_metric, iteration_num)
+                if run is not None:
+                    run.log({
+                        "train/loss": batch_loss_train,
+                        "train/metric": batch_metric_train,
+                        "valid/loss": batch_loss_val if val_dataloader is not None else None,
+                        "valid/metric": batch_metric_val if val_dataloader is not None else None,
+                        "learning_rate": model.get_learning_rate(),
+                        "samples_seen": model.training_samples_seen,
+                    })
 
-            iteration_num += 1
-
-        if writer is not None:
-            writer.close()
-
-        train_loss = np.mean(train_loss)
-        train_metric = np.mean(train_metric)
+        epoch_loss_train = np.mean(epoch_loss_train)
+        epoch_metric_train = np.mean(epoch_metric_train)
 
         print(f"Epoch {epoch+1}/{epochs}, ", end="")
-        print(f"Train Loss: {train_loss:.4f}, Train Metric: {train_metric:.4f}, ", end="")
+        print(f"Train Loss: {epoch_loss_train:.4f}, Train Metric: {epoch_metric_train:.4f}, ", end="")
         if val_dataloader is not None:
-            val_loss = np.mean(val_loss)
-            val_metric = np.mean(val_metric)
-            print(f"Val Loss: {val_loss:.4f}, Val Metric: {val_metric:.4f}", end="")
+            epoch_loss_val = np.mean(epoch_loss_val)
+            epoch_metric_val = np.mean(epoch_metric_val)
+            print(f"Val Loss: {epoch_loss_val:.4f}, Val Metric: {epoch_metric_val:.4f}", end="")
         print()
 
         model.on_epoch_end()
     
     model.eval()
-
-    return iteration_num
