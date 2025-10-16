@@ -4,11 +4,12 @@ Evaluation functions for classification models.
 
 # Author: Atif Khurshid
 # Created: 2025-06-22
-# Modified: 2025-08-18
-# Version: 1.2
+# Modified: 2025-10-16
+# Version: 1.3
 # Changelog:
 #     - 2025-08-01: Added documentation and type hints.
 #     - 2025-08-18: Improved confusion matrix plotting.
+#     - 2025-10-16: Added save functionality for confusion matrix figure.
 
 import numpy as np
 import seaborn as sns
@@ -23,6 +24,9 @@ def evaluate_classification(
         confusion: bool = True,
         figsize: tuple[int, int] = (10, 8),
         report: bool = False,
+        save_path: str | None = None,
+        save_dpi: int = 600,
+        save_format: str = 'png',
         digits: int = 4,
         zero_division: int = 0,
         **kwargs: dict,
@@ -45,6 +49,12 @@ def evaluate_classification(
         Size of the confusion matrix plot.
     report : bool, optional
         Whether to return the classification report as a dictionary. Default is False.
+    save_path : str | None, optional
+        Path to save the figure, if None the figure is not saved, default is None.
+    save_dpi : int, optional
+        Dots per inch for saving the figure, default is 600.
+    save_format : str, optional
+        Format to save the figure, default is 'png'.
     digits : int, optional
         Number of decimal places for formatting in the report. Default is 4.
     zero_division : int, optional
@@ -79,6 +89,8 @@ def evaluate_classification(
         plt.xlabel('Predicted')
         plt.ylabel('True')
         plt.title('Confusion Matrix')
+        if save_path is not None:
+            plt.savefig(save_path, dpi=save_dpi, format=save_format)
         plt.show()
 
     if report:
