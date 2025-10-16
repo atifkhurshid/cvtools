@@ -4,8 +4,8 @@ Visualizations for feature vectors.
 
 # Author: Atif Khurshid
 # Created: 2025-06-16
-# Modified: 2025-08-22
-# Version: 1.4
+# Modified: 2025-10-16
+# Version: 1.5
 # Changelog:
 #     - 2025-08-04: Added support for t-SNE visualization.
 #     - 2025-08-15: Added function to display all visualizations together.
@@ -13,6 +13,7 @@ Visualizations for feature vectors.
 #     - 2025-08-21: Updated visualization titles and labels for clarity.
 #     - 2025-08-21: Added function to visualize feature distribution.
 #     - 2025-08-22: Updated feature distribution visualization.
+#     - 2025-10-16: Added options to save visualizations to files.
 
 import numpy as np
 import seaborn as sns
@@ -33,6 +34,9 @@ def visualize_features(
         batch_size: int = 1000,
         perplexity: float = 30.0,
         figsize: tuple[int, int] = (10, 8),
+        save_path: str | None = None,
+        save_dpi: int = 600,
+        save_format: str = 'png',
     ):
     """
     Visualize high-dimensional features using PCA, or t-SNE.
@@ -55,7 +59,13 @@ def visualize_features(
         Perplexity parameter for t-SNE, default is 30.
     figsize : tuple of int, optional
         Size of the figure for visualization, default is (10, 8).
-    
+    save_path : str | None, optional
+        Path to save the figure, if None the figure is not saved, default is None.
+    save_dpi : int, optional
+        Dots per inch for saving the figure, default is 600.
+    save_format : str, optional
+        Format to save the figure, default is 'png'.
+        
     Examples
     --------
     >>> import numpy as np
@@ -116,6 +126,9 @@ def visualize_features(
         ncol=1,
     )
 
+    if save_path is not None:
+        plt.savefig(save_path, dpi=save_dpi, format=save_format)
+
     plt.show()
 
 
@@ -126,6 +139,9 @@ def all_feature_visualizations(
         batch_size: int = 1000,
         perplexity: float = 30.0,
         figsize: tuple[int, int] = (10, 32),
+        save_path: str | None = None,
+        save_dpi: int = 600,
+        save_format: str = 'png',
     ):
     """
     Visualize high-dimensional features using PCA and t-SNE.
@@ -144,6 +160,12 @@ def all_feature_visualizations(
         Perplexity parameter for t-SNE, default is 30.0.
     figsize : tuple[int, int], optional
         Size of the figure for visualization, default is (10, 32).
+    save_path : str | None, optional
+        Path to save the figure, if None the figure is not saved, default is None.
+    save_dpi : int, optional
+        Dots per inch for saving the figure, default is 600.
+    save_format : str, optional
+        Format to save the figure, default is 'png'.
     
     Examples
     --------
@@ -203,6 +225,10 @@ def all_feature_visualizations(
     fig.legend(handles, legend_labels, loc='upper right', bbox_to_anchor=(1.25, 0.5), title="Classes")
 
     plt.tight_layout()
+
+    if save_path is not None:
+        plt.savefig(save_path, dpi=save_dpi, format=save_format)
+
     plt.show()
 
 
@@ -212,6 +238,9 @@ def visualize_feature_distribution(
         figsize: tuple[int, int] = (8, 6),
         xlim: tuple[float, float] | None = None,
         ylim: tuple[float, float] | None = None,
+        save_path: str | None = None,
+        save_dpi: int = 600,
+        save_format: str = 'png',
         **kwargs: dict,
     ):
     """
@@ -229,6 +258,12 @@ def visualize_feature_distribution(
         The x-axis limits, default is None.
     ylim : tuple[float, float] | None, optional
         The y-axis limits, default is None.
+    save_path : str | None, optional
+        Path to save the figure, if None the figure is not saved, default is None.
+    save_dpi : int, optional
+        Dots per inch for saving the figure, default is 600.
+    save_format : str, optional
+        Format to save the figure, default is 'png'.
     kwargs : dict, optional
         Additional keyword arguments to pass to seaborn's histogram function.
 
@@ -253,5 +288,10 @@ def visualize_feature_distribution(
         plt.xlim(xlim)
     if ylim is not None:
         plt.ylim(ylim)
+
+    plt.tight_layout()
+
+    if save_path is not None:
+        plt.savefig(save_path, dpi=save_dpi, format=save_format)
 
     plt.show()

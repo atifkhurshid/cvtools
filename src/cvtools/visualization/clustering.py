@@ -4,13 +4,14 @@ Visualizations for clustering.
 
 # Author: Atif Khurshid
 # Created: 2025-08-19
-# Modified: 2025-09-02
-# Version: 1.4
+# Modified: 2025-10-16
+# Version: 1.5
 # Changelog:
 #     - 2025-08-20: Added clustering stability visualization.
 #     - 2025-08-21: Updated cluster variability visualization.
 #     - 2025-08-27: Updated cluster variability visualization.
 #     - 2025-09-02: Changed separability index calculations.
+#     - 2025-10-16: Added options to save visualizations to files.
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -28,6 +29,9 @@ def visualize_cluster_variability(
         cmap: str = 'RdYlGn',
         bar_width: float = 0.3,
         variability_limits: tuple[float, float] | None = None,
+        save_path: str | None = None,
+        save_dpi: int = 600,
+        save_format: str = 'png',
     ):
     """
     Visualize the intra-cluster and inter-cluster variability.
@@ -48,7 +52,13 @@ def visualize_cluster_variability(
         Width of the bars in the bar plot.
     variability_limits : tuple[float, float] | None, optional
         Limits for the variability plot. Default is None.
-
+    save_path : str | None, optional
+        Path to save the figure, if None the figure is not saved, default is None.
+    save_dpi : int, optional
+        Dots per inch for saving the figure, default is 600.
+    save_format : str, optional
+        Format to save the figure, default is 'png'.
+        
     Returns
     -------
     None
@@ -86,6 +96,9 @@ def visualize_cluster_variability(
     axes[1].set_ylabel('Separability Index')
     axes[1].set_ylim(0, 1.1)
 
+    if save_path is not None:
+        plt.savefig(save_path, dpi=save_dpi, format=save_format)
+
     plt.show()
     
 
@@ -96,6 +109,9 @@ def visualize_clustering_stability(
         n_clusters_list: list | np.ndarray | None = None,
         box_width: float = 0.15,
         figsize: tuple[int, int] = (10, 6),
+        save_path: str | None = None,
+        save_dpi: int = 600,
+        save_format: str = 'png',
     ):
     """import matplotlib.pyplot as plt
     Visualize clustering stability using boxplots.
@@ -117,6 +133,12 @@ def visualize_clustering_stability(
         Width of the boxes in the boxplot. Default is 0.15
     figsize : tuple[int, int], optional
         Size of the figure. Default is (10, 6).
+    save_path : str | None, optional
+        Path to save the figure, if None the figure is not saved, default is None.
+    save_dpi : int, optional
+        Dots per inch for saving the figure, default is 600.
+    save_format : str, optional
+        Format to save the figure, default is 'png'.
     
     Examples
     --------
@@ -170,4 +192,8 @@ def visualize_clustering_stability(
     ax.legend([bp1["boxes"][0], bp2["boxes"][0]], ['KMeans', 'Random Baseline'], loc='upper right')
 
     plt.tight_layout()
+
+    if save_path is not None:
+        plt.savefig(save_path, dpi=save_dpi, format=save_format)
+
     plt.show()
