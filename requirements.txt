@@ -3,10 +3,12 @@ munkres
 numpy
 pandas
 pillow
+scikit-learn
+scipy
+seaborn
 tensorflow[tensorflow]
 torch[pytorch]
 torchaudio[pytorch]
 torchvision[pytorch]
 tqdm
-scikit-learn
-seaborn
+wandb
