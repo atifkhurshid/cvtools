@@ -12,7 +12,7 @@ Sequential PyTorch models.
 import torch
 import torch.nn as nn
 
-from .model import PyTorchModel
+from .base import PyTorchModel
 
 
 class PyTorchSequentialModel(PyTorchModel):

@@ -27,7 +27,7 @@ from tqdm import tqdm
 from sklearn.metrics import classification_report
 from torch.utils.data import Dataset, DataLoader
 
-from .model import PyTorchModel
+from .base import PyTorchModel
 from ...utils.pytorch import InfiniteDataLoader
 
 
