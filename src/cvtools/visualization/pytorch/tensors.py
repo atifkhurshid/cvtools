@@ -4,10 +4,10 @@ Visualizations for Pytorch Tensors.
 
 # Author: Atif Khurshid
 # Created: 2025-08-29
-# Modified: None
-# Version: 1.0
+# Modified: 2025-10-29
+# Version: 1.1
 # Changelog:
-#     - None
+#     - 2025-10-29: Added figscale parameter to adjust figure size.
 
 import torch
 import numpy as np
@@ -22,6 +22,7 @@ def visualize_tensor(
         normalize: bool = True,
         ncols: int = 8,
         padding: int = 1,
+        figscale: int = 1,
     ):
     """
     Visualize a Pytorch tensor.
@@ -42,6 +43,8 @@ def visualize_tensor(
         Number of columns in the grid.
     padding : int, default=1
         Padding between images in the grid.
+    figscale : int, default=1
+        Scale factor for the figure size.
 
     Examples
     --------
@@ -65,7 +68,7 @@ def visualize_tensor(
     grid = utils.make_grid(tensor, nrow=ncols, normalize=False, padding=padding)
     grid = grid.numpy().transpose((1, 2, 0))    # Change to (H, W, C) format of image
 
-    plt.figure(figsize=(ncols, nrows))
+    plt.figure(figsize=(ncols * figscale, nrows * figscale))
     plt.imshow(grid)
     plt.axis('off')
     plt.ioff()
