@@ -9,8 +9,12 @@ Pytorch image processing module.
 # Changelog:
 #     - None
 
+import math
+
 import torch
 import torchvision
+
+from torchvision.transforms import InterpolationMode
 
 
 def imread(
@@ -50,7 +54,7 @@ def imread(
 def imresize(
         img: torch.Tensor,
         size: tuple[int, int],
-        interpolation: str = "bilinear",
+        interpolation: InterpolationMode = InterpolationMode.BILINEAR,
         preserve_aspect_ratio: bool = False,
         fill: int = 0,
         antialias: bool = False,
@@ -83,7 +87,8 @@ def imresize(
 
     aspect_ratio_unchanged = (H / W == size[0] / size[1])
     if preserve_aspect_ratio and not aspect_ratio_unchanged:
-        target_size = min(size)
+        scale = min(size[0] / H, size[1] / W)
+        target_size = (int(H * scale), int(W * scale)) 
     else:
         target_size = size
 
@@ -93,7 +98,8 @@ def imresize(
     if img.shape[-2:] != size:
         dh = size[0] - img.shape[-2]
         dw = size[1] - img.shape[-1]
-        padding = (dw // 2, dw // 2, dh // 2, dh // 2)
+        padding = (math.floor(dw / 2), math.ceil(dw / 2), 
+                   math.floor(dh / 2), math.ceil(dh / 2))
         img = torch.nn.functional.pad(img, padding, mode='constant', value=fill)
 
     return img
