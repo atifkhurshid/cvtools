@@ -4,18 +4,18 @@ Generic dataloader for image classification tasks.
 
 # Author: Atif Khurshid
 # Created: 2022-12-18
-# Modified: 2025-06-18
-# Version: 1.0
+# Modified: 2025-10-30
+# Version: 1.1
 # Changelog:
 #     - 2025-06-18: Updated documentation and type hints.
+#     - 2025-10-30: Refactored image loading to use imread function.
 
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
 
 from .._base import _ClassificationBase
-from ....image import imresize
+from ....image import imread
 
 
 class ClassificationDataset(_ClassificationBase):
@@ -23,9 +23,10 @@ class ClassificationDataset(_ClassificationBase):
     def __init__(
             self,
             root_dir: str,
-            exts: list[str]=['.jpg','.png'],
-            image_size: tuple[int, int] | None=None,
-            preserve_aspect_ratio: bool=True,
+            exts: list[str] = ['.jpg', '.png'],
+            image_mode: str | int = 'RGB',
+            image_size: tuple[int, int] | None = None,
+            preserve_aspect_ratio: bool = True,
         ):
         """
         Generic classification dataset class.
@@ -39,6 +40,8 @@ class ClassificationDataset(_ClassificationBase):
             Path to the root directory containing class subdirectories.
         exts : list[str], optional
             List of file extensions to consider as valid images. Default is ['.jpg', '.png'].
+        image_mode : str | int, optional
+            Mode to read images. Can be 'RGB', 'GRAY', or a cv2.IMREAD_... flag. Default is 'RGB'.
         image_size : tuple[int, int] | None, optional
             Size to which images will be resized. If None, images will not be resized. Default is None.
         preserve_aspect_ratio : bool, optional
@@ -72,6 +75,7 @@ class ClassificationDataset(_ClassificationBase):
         self.root_dir = Path(root_dir)
         self.image_size = image_size
         self.preserve_aspect_ratio = preserve_aspect_ratio
+        self.image_mode = image_mode
 
         self.classes = [x.name for x in self.root_dir.iterdir() if not x.is_file()]
 
@@ -105,11 +109,15 @@ class ClassificationDataset(_ClassificationBase):
         """
         id = self.ids[index]
         label = self.labels[id]
-        path = self.root_dir / label / self.filenames[id]
+        image_path = str(self.root_dir / label / self.filenames[id])
 
-        with Image.open(path) as image:
-            if self.image_size:
-                image = imresize(image, self.image_size, self.preserve_aspect_ratio)
-            image = np.asarray(image)
+        image = imread(
+            image_path,
+            mode=self.image_mode,
+            size=self.image_size,
+            preserve_aspect_ratio=self.preserve_aspect_ratio,
+        )
 
-        return image, self.class_name_to_index(label)
+        label = self.class_name_to_index(label)
+
+        return image, label
