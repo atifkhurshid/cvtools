@@ -22,7 +22,7 @@ from .processing import imresize as resize
 
 def imread(
         filepath: str,
-        mode: str | int | None = None,
+        mode: str | int | None = "RGB",
         size: tuple[int, int] | None = None,
         **kwargs,
     ) -> np.ndarray:
@@ -36,7 +36,7 @@ def imread(
         Path to image file
     mode : str or int, optional
         Color conversion mode. Can be one of "RGB", "GRAY" or any cv2 color conversion code.
-        Default is None (no conversion).
+        Default is "RGB".
     size : 2-tuple, optional
         Shape of returned image: (height, width), default is None
     kwargs : dict, optional
