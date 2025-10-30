@@ -56,8 +56,8 @@ def imread(
     """
     img = cv2.imread(filepath, cv2.IMREAD_UNCHANGED)
     if img is None:
-        return None
-    
+        raise FileNotFoundError(f"Image file could not be read: {filepath}")
+
     if mode is not None:
         if mode == 'RGB':
             mode = cv2.COLOR_BGR2RGB
