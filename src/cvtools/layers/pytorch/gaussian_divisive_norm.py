@@ -11,6 +11,8 @@ Gaussian Divisive Normalization Layer
 #     - 2025-10-06: Made beta parameter trainable.
 #     - 2025-10-24: Updated weight initialization and fixed a few bugs.
 
+from typing import Union
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -24,7 +26,7 @@ class GaussianDivisiveNorm(nn.Module):
             kernel_size: int,
             sigma: float = 1,
             stride: int = 1,
-            padding: int | str = "auto",
+            padding: Union[int, str] = "auto",
             trainable: bool = False,
         ):
         """

@@ -10,6 +10,7 @@ Dataloader for Princeton SUN dataset: https://vision.princeton.edu/projects/2010
 #     - None
 
 import os
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -24,7 +25,7 @@ class SUNDataset(_ClassificationBase):
             self,
             root_dir: str,
             class_hierarchy: str = "basic",
-            image_size: tuple[int, int] | None = None,
+            image_size: Optional[tuple[int, int]] = None,
             preserve_aspect_ratio: bool = True,
             train: bool = True,
             split_idx: int = 0,

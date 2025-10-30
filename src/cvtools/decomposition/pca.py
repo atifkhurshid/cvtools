@@ -11,6 +11,8 @@ Customized PCA module.
 #     - 2025-06-21: Add partial fit functionality
 #     - 2025-08-01: Add documentation and type hints.
 
+from typing import Optional
+
 import numpy as np
 from sklearn.decomposition import IncrementalPCA
 
@@ -84,7 +86,7 @@ class PCA():
     def fit(
             self,
             x: np.ndarray,
-            batch_size: int | None = None,
+            batch_size: Optional[int] = None,
         ):
         """
         Fit the PCA model to the input data.
@@ -130,7 +132,7 @@ class PCA():
     def partial_fit(
             self,
             x: np.ndarray,
-            batch_size: int | None = None,
+            batch_size: Optional[int] = None,
         ):
         """
         Incrementally fit the PCA model to the input data.

@@ -10,6 +10,8 @@ TensorFlow Wrapper for generic image classification dataloader
 #     - 2025-06-18: Updated documentation and type hints.
 #     - 2025-10-30: Updated arguments to match base class.
 
+from typing import Optional, Union
+
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.utils import Sequence
@@ -22,8 +24,8 @@ class ClassificationDatasetTF(ClassificationDataset, Sequence):
             self,
             root_dir: str,
             exts: list[str] = ['.jpg', '.png'],
-            image_mode: str | int = 'RGB',
-            image_size: tuple[int, int] | None = None,
+            image_mode: Union[str, int] = 'RGB',
+            image_size: Optional[tuple[int, int]] = None,
             preserve_aspect_ratio: bool = True,
             batch_size: int = 32,
             shuffle: bool = False,

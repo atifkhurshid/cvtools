@@ -9,6 +9,8 @@ PyTorch wrapper for 15-category Scenes dataloader.
 # Changelog:
 #     - 2025-10-30: Updated arguments to match base class
 
+from typing import Callable, Optional
+
 import torch
 from torch.utils.data import Dataset
 from torchvision.transforms.v2 import Transform
@@ -21,10 +23,10 @@ class Scenes15DatasetPT(Scenes15Dataset, Dataset):
     def __init__(
             self,
             root_dir: str,
-            image_size: tuple[int, int] | None = None,
+            image_size: Optional[tuple[int, int]] = None,
             preserve_aspect_ratio: bool = True,
-            transform: Transform | None = None,
-            target_transform: callable | None = None,
+            transform: Optional[Transform] = None,
+            target_transform: Optional[Callable] = None,
         ):
         """
         PyTorch wrapper class for the 15-category Scenes dataset.

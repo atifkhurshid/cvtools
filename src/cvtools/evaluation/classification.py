@@ -11,6 +11,8 @@ Evaluation functions for classification models.
 #     - 2025-08-18: Improved confusion matrix plotting.
 #     - 2025-10-16: Added save functionality for confusion matrix figure.
 
+from typing import Optional, Union
+
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -18,13 +20,13 @@ from sklearn.metrics import classification_report, confusion_matrix
 
 
 def evaluate_classification(
-        y_true: list | np.ndarray,
-        y_pred: list | np.ndarray,
-        class_names: list | None = None,
+        y_true: Union[list, np.ndarray],
+        y_pred: Union[list, np.ndarray],
+        class_names: Optional[list] = None,
         confusion: bool = True,
         figsize: tuple[int, int] = (10, 8),
         report: bool = False,
-        save_path: str | None = None,
+        save_path: Optional[str] = None,
         save_dpi: int = 600,
         save_format: str = 'png',
         digits: int = 4,

@@ -18,6 +18,7 @@ Utility functions for PyTorch models.
 #     - 2025-10-15: Replaced tensorboard with wandb for logging.
 
 from pathlib import Path
+from typing import Union, Optional
 
 import wandb
 import torch
@@ -140,7 +141,7 @@ def save_feature_maps(
 
 def evaluate_classification_model(
         model: PyTorchModel,
-        data: DataLoader | tuple,
+        data: Union[DataLoader, tuple],
         report: bool = True,
         pbar: bool = True,
     ) -> tuple[float, float, np.ndarray, np.ndarray]:
@@ -212,8 +213,8 @@ def train_classification_model(
         model: PyTorchModel,
         train_dataloader: DataLoader,
         epochs: int = 1,
-        val_dataloader: DataLoader | None = None,
-        run: wandb.Run | None = None,
+        val_dataloader: Optional[DataLoader] = None,
+        run: Optional[wandb.Run] = None,
         log_interval: int = 10,
     ):
     """

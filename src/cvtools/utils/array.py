@@ -9,6 +9,7 @@ Numpy array utilities.
 # Changelog:
 #     - Updated padding logic to allow specific sizes for padding.
 
+from typing import Union
 from collections import defaultdict
 
 import numpy as np
@@ -53,7 +54,7 @@ def group_arrays_by_shape(
 
 def pad_arrays_to_uniform_size(
         arrays: list[np.ndarray],
-        size: str | tuple[int, int] = "auto",
+        size: Union[str, tuple[int, int]] = "auto",
         mode: str = "constant",
         **kwargs: dict,
     ) -> np.ndarray:

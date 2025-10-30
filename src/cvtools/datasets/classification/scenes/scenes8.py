@@ -11,6 +11,7 @@ Link: https://people.csail.mit.edu/torralba/code/spatialenvelope/
 #     - None
 
 import os
+from typing import Optional
 
 import numpy as np
 
@@ -22,7 +23,7 @@ class Scenes8Dataset(_ClassificationBase):
     def __init__(
             self,
             root_dir: str,
-            image_size: tuple[int, int] | None = None,
+            image_size: Optional[tuple[int, int]] = None,
             preserve_aspect_ratio: bool = True,
         ):
         """

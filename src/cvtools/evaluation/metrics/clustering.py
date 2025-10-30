@@ -10,6 +10,8 @@ Metrics for evaluating clustering models.
 #     - 2025-08-20: Removed adjusted maximum cluster assignment score
 #     - 2025-08-20: Added modified version of silhouette score
 
+from typing import Union
+
 import numpy as np
 from munkres import Munkres
 from scipy.special import comb
@@ -53,8 +55,8 @@ def silhouette_score(
 
 
 def clustering_accuracy(
-        labels_true: list | np.ndarray,
-        labels_pred: list | np.ndarray
+        labels_true: Union[list, np.ndarray],
+        labels_pred: Union[list, np.ndarray]
     ) -> float:
     """
     Calculate clustering accuracy using the Kuhn-Munkres algorithm.
@@ -105,8 +107,8 @@ def clustering_accuracy(
 
 
 def clustering_f_measure(
-        labels_true: list | np.ndarray,
-        labels_pred: list | np.ndarray
+        labels_true: Union[list, np.ndarray],
+        labels_pred: Union[list, np.ndarray]
     ) -> float:
     """
     Compute the F-measure for clustering results.
@@ -155,8 +157,8 @@ def clustering_f_measure(
 
 
 def clustering_purity(
-        labels_true: list | np.ndarray,
-        labels_pred: list | np.ndarray
+        labels_true: Union[list, np.ndarray],
+        labels_pred: Union[list, np.ndarray]
     ) -> float:
     """
     Compute the clustering purity.
@@ -182,8 +184,8 @@ def clustering_purity(
 
 
 def maximum_cluster_assignment_score(
-        labels_true: list | np.ndarray,
-        labels_pred: list | np.ndarray
+        labels_true: Union[list, np.ndarray],
+        labels_pred: Union[list, np.ndarray]
     ) -> float:
     """
     Compute the maximum cluster assignment (MCA) index.
@@ -220,7 +222,7 @@ def intra_cluster_variability(
         features: np.ndarray,
         labels: np.ndarray,
         metric: str = 'euclidean'
-    ):
+    ) -> np.ndarray:
     """
     Calculate the average intra-cluster variability (mean pairwise distance within each cluster).
 
@@ -260,7 +262,7 @@ def inter_cluster_variability(
         features: np.ndarray,
         labels: np.ndarray,
         metric: str = 'euclidean'
-    ):
+    ) -> np.ndarray:
     """
     Calculate the average inter-cluster variability (mean pairwise distance between clusters).
 
@@ -275,7 +277,7 @@ def inter_cluster_variability(
 
     Returns
     -------
-    float
+    np.ndarray
         Mean inter-cluster variability across all cluster pairs.
     """
     unique_labels = np.unique(labels)

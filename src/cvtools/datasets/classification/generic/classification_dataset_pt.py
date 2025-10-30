@@ -10,6 +10,8 @@ PyTorch Wrapper for generic image classification dataloader
 #     - 2025-06-18: Updated documentation and type hints.
 #     - 2025-10-30: Updated arguments to match base class.
 
+from typing import Callable, Optional, Union
+
 import torch
 from torch.utils.data import Dataset
 from torchvision.transforms.v2 import Transform
@@ -24,11 +26,11 @@ class ClassificationDatasetPT(ClassificationDataset, Dataset):
             self,
             root_dir: str,
             exts: list[str] = ['.jpg', '.png'],
-            image_mode: str | int = 'RGB',
-            image_size: tuple[int, int] | None = None,
+            image_mode: Union[str, int] = 'RGB',
+            image_size: Optional[tuple[int, int]] = None,
             preserve_aspect_ratio: bool = True,
-            transform: Transform | None = None,
-            target_transform: callable | None = None,
+            transform: Optional[Transform] = None,
+            target_transform: Optional[Callable] = None,
         ):
         """
         PyTorch wrapper class for generic image classification dataset.

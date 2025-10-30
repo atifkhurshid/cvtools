@@ -15,6 +15,8 @@ Visualizations for feature vectors.
 #     - 2025-08-22: Updated feature distribution visualization.
 #     - 2025-10-16: Added options to save visualizations to files.
 
+from typing import Union, Optional
+
 import numpy as np
 import seaborn as sns
 import mpl_toolkits.mplot3d
@@ -27,14 +29,14 @@ plt.style.use('seaborn-v0_8-notebook')
 
 def visualize_features(
         mode: str,
-        features: list[np.ndarray] | np.ndarray,
-        labels: list | np.ndarray,
+        features: Union[list[np.ndarray], np.ndarray],
+        labels: Union[list, np.ndarray],
         class_names: list[str],
         n_components: int = 2,
         batch_size: int = 1000,
         perplexity: float = 30.0,
         figsize: tuple[int, int] = (10, 8),
-        save_path: str | None = None,
+        save_path: Optional[str] = None,
         save_dpi: int = 600,
         save_format: str = 'png',
     ):
@@ -133,13 +135,13 @@ def visualize_features(
 
 
 def all_feature_visualizations(
-        features: list[np.ndarray] | np.ndarray,
-        labels: list | np.ndarray,
+        features: Union[list[np.ndarray], np.ndarray],
+        labels: Union[list, np.ndarray],
         class_names: list[str],
         batch_size: int = 1000,
         perplexity: float = 30.0,
         figsize: tuple[int, int] = (10, 32),
-        save_path: str | None = None,
+        save_path: Optional[str] = None,
         save_dpi: int = 600,
         save_format: str = 'png',
     ):
@@ -236,9 +238,9 @@ def visualize_feature_distribution(
         features: np.ndarray,
         bins: int = 100,
         figsize: tuple[int, int] = (8, 6),
-        xlim: tuple[float, float] | None = None,
-        ylim: tuple[float, float] | None = None,
-        save_path: str | None = None,
+        xlim: Optional[tuple[float, float]] = None,
+        ylim: Optional[tuple[float, float]] = None,
+        save_path: Optional[str] = None,
         save_dpi: int = 600,
         save_format: str = 'png',
         **kwargs: dict,

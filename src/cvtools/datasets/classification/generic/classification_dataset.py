@@ -11,6 +11,7 @@ Generic dataloader for image classification tasks.
 #     - 2025-10-30: Refactored image loading to use imread function.
 
 from pathlib import Path
+from typing import Optional, Union
 
 import numpy as np
 
@@ -24,8 +25,8 @@ class ClassificationDataset(_ClassificationBase):
             self,
             root_dir: str,
             exts: list[str] = ['.jpg', '.png'],
-            image_mode: str | int = 'RGB',
-            image_size: tuple[int, int] | None = None,
+            image_mode: Union[str, int] = 'RGB',
+            image_size: Optional[tuple[int, int]] = None,
             preserve_aspect_ratio: bool = True,
         ):
         """

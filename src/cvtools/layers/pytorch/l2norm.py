@@ -16,7 +16,7 @@ import torch.nn.functional as F
 
 class L2Norm(nn.Module):
 
-    def __init__(self, dim=1):
+    def __init__(self, dim: int = 1):
         """
         L2 Normalization layer.
 

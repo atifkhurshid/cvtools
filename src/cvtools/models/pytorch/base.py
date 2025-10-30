@@ -10,8 +10,9 @@ Base class for PyTorch models.
 #     - 2025-08-29: Added training and evaluation steps.
 #     - 2025-09-04: Added scheduler support.
 
+from typing import Optional
+
 import torch
-import numpy as np
 import torch.nn as nn
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
@@ -28,7 +29,7 @@ class PyTorchModel(nn.Module):
 
         self.loss: nn.Module
         self.optimizer: Optimizer
-        self.scheduler: LRScheduler | None
+        self.scheduler: Optional[LRScheduler]
         self.metric: Metric
         self.device: str
 
@@ -41,7 +42,7 @@ class PyTorchModel(nn.Module):
             loss: nn.Module,
             optimizer: Optimizer,
             metric: Metric,
-            scheduler: LRScheduler | None = None,
+            scheduler: Optional[LRScheduler] = None,
             device: str = "cpu",
         ):
         """
@@ -106,7 +107,11 @@ class PyTorchModel(nn.Module):
         return loss.item()
     
 
-    def eval_step(self, X: torch.Tensor, y: torch.Tensor) -> tuple[torch.Tensor, float]:
+    def eval_step(
+            self,
+            X: torch.Tensor, 
+            y: torch.Tensor
+        ) -> tuple[torch.Tensor, float]:
         """
         Evaluate the model on the given input and target tensors.
 
@@ -140,7 +145,11 @@ class PyTorchModel(nn.Module):
         return preds, loss.item()
 
 
-    def compute_loss(self, outputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+    def compute_loss(
+            self,
+            outputs: torch.Tensor,
+            targets: torch.Tensor
+        ) -> torch.Tensor:
         """
         Compute the loss for the given outputs and targets.
 

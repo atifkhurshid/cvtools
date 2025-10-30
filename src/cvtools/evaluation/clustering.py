@@ -16,7 +16,7 @@ Evaluation functions for clustering models.
 #     - 2025-08-20: Added cluster stability evaluation.
 
 from pprint import pprint
-from typing import Callable
+from typing import Callable, Union, Optional
 
 import numpy as np
 from scipy.stats import mannwhitneyu
@@ -34,12 +34,12 @@ from .metrics import silhouette_score
 
 
 def evaluate_clustering(
-        features: list | np.ndarray,
-        labels_true: list | np.ndarray,
-        labels_pred: list | np.ndarray,
+        features: Union[list, np.ndarray],
+        labels_true: Union[list, np.ndarray],
+        labels_pred: Union[list, np.ndarray],
         metric: str = "euclidean",
         report: bool = True,
-    ) -> dict | None:
+    ) -> Optional[dict]:
     """
     Evaluate clustering model performance.
     Computes and optionally prints the Adjusted Rand Index, Normalized Mutual Information,
@@ -125,7 +125,7 @@ def evaluate_clustering_stability(
         n_repetitions: int = 10,
         batch_size: int = 5000,
         n_init: int = 10,
-        random_state: int | None = None,
+        random_state: Optional[int] = None,
    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Evaluate the stability of clustering results using a random baseline.

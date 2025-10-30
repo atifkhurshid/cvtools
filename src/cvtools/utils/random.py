@@ -9,12 +9,14 @@ Random sampling utilities.
 # Changelog:
 #     - None
 
+from typing import Union
+
 import numpy as np
 
 
 def stratified_sampling_by_class(
-        data: list[np.ndarray] | np.ndarray,
-        labels: list | np.ndarray,
+        data: Union[list[np.ndarray], np.ndarray],
+        labels: Union[list, np.ndarray],
         n_samples: int = 10,
         seed: int = 42
     ) -> tuple[np.ndarray, np.ndarray]:

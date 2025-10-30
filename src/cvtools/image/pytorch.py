@@ -10,18 +10,18 @@ Pytorch image processing module.
 #     - None
 
 import math
+from typing import Union, Optional
 
 import torch
 import torchvision
-
 from torchvision.transforms import InterpolationMode
 
 
 def imread(
         filepath: str,
-        mode: str | torchvision.io.ImageReadMode = "UNCHANGED",
-        size: tuple[int, int] | None = None,
-        **kwargs,
+        mode: Union[str, torchvision.io.ImageReadMode] = "UNCHANGED",
+        size: Optional[tuple[int, int]] = None,
+        **kwargs: dict,
     ) -> torch.Tensor:
     """
     Read an image from a file.

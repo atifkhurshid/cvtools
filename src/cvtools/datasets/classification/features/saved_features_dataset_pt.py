@@ -11,6 +11,8 @@ PyTorch Wrapper for saved features dataloader
 #     - 2025-09-05: Updated according to changes in SavedFeaturesDataset.
 #     - 2025-10-30: Updated arguments to match base class
 
+from typing import Callable, Optional
+
 import torch
 from torch.utils.data import Dataset
 from torchvision.transforms.v2 import Transform
@@ -24,8 +26,8 @@ class SavedFeaturesDatasetPT(SavedFeaturesDataset, Dataset):
             self,
             dataset: Dataset,
             features_dir: str,
-            transform: Transform | None = None,
-            target_transform: callable | None = None,
+            transform: Optional[Transform] = None,
+            target_transform: Optional[Callable] = None,
         ):
         """
         PyTorch wrapper class for saved features dataset.

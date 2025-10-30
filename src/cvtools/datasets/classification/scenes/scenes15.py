@@ -11,6 +11,7 @@ Link: https://ieeexplore.ieee.org/document/1641019
 #     - None
 
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 from PIL import Image
@@ -24,7 +25,7 @@ class Scenes15Dataset(_ClassificationBase):
     def __init__(
             self,
             root_dir: str,
-            image_size: tuple[int, int] | None = None,
+            image_size: Optional[tuple[int, int]] = None,
             preserve_aspect_ratio: bool = True,
         ):
         """

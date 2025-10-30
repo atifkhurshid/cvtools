@@ -13,6 +13,8 @@ Image I/O module.
 #     - 2025-05-23: Changed imread to use processing.resize
 #     - 2025-10-29: Changed image processing library back to OpenCV
 
+from typing import Union, Optional
+
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
@@ -22,8 +24,8 @@ from .processing import imresize as resize
 
 def imread(
         filepath: str,
-        mode: str | int | None = "RGB",
-        size: tuple[int, int] | None = None,
+        mode: Optional[Union[str, int]] = "RGB",
+        size: Optional[tuple[int, int]] = None,
         **kwargs,
     ) -> np.ndarray:
     """
@@ -74,7 +76,7 @@ def imread(
 def imwrite(
         filepath: str,
         img: np.ndarray,
-        mode: str | None = None,
+        mode: Optional[str] = None,
     ):
     """
     Write image to file using OpenCV.

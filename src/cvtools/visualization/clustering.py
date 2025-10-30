@@ -13,6 +13,8 @@ Visualizations for clustering.
 #     - 2025-09-02: Changed separability index calculations.
 #     - 2025-10-16: Added options to save visualizations to files.
 
+from typing import Optional, Union
+
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
@@ -28,8 +30,8 @@ def visualize_cluster_variability(
         figsize: tuple[int, int] = (14, 5),
         cmap: str = 'RdYlGn',
         bar_width: float = 0.3,
-        variability_limits: tuple[float, float] | None = None,
-        save_path: str | None = None,
+        variability_limits: Optional[tuple[float, float]] = None,
+        save_path: Optional[str] = None,
         save_dpi: int = 600,
         save_format: str = 'png',
     ):
@@ -106,10 +108,10 @@ def visualize_clustering_stability(
         clustering_scores: np.ndarray,
         random_baseline_scores: np.ndarray,
         pvalues: np.ndarray,
-        n_clusters_list: list | np.ndarray | None = None,
+        n_clusters_list: Optional[Union[list, np.ndarray]] = None,
         box_width: float = 0.15,
         figsize: tuple[int, int] = (10, 6),
-        save_path: str | None = None,
+        save_path: Optional[str] = None,
         save_dpi: int = 600,
         save_format: str = 'png',
     ):

@@ -13,6 +13,7 @@ Dataloader for NIH Chest X-Ray dataset: https://nihcc.app.box.com/v/ChestXray-NI
 #     - 2025-05-29: Add labels as an attribute
 
 import os
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -25,7 +26,7 @@ class CXRDataset(_ClassificationBase):
     def __init__(
             self,
             root_dir: str,
-            image_size: tuple[int, int] | None = None,
+            image_size: Optional[tuple[int, int]] = None,
             preserve_aspect_ratio: bool = False,
             train: bool = True,
             binary: bool = True
