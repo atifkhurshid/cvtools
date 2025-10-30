@@ -14,9 +14,8 @@ import os
 
 import numpy as np
 
-from .._base import _ClassificationBase
 from ....image import imread
-
+from .._base import _ClassificationBase
 
 
 class Scenes8Dataset(_ClassificationBase):

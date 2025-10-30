@@ -15,8 +15,8 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from .._base import _ClassificationBase
 from ....image import imresize
+from .._base import _ClassificationBase
 
 
 class Scenes15Dataset(_ClassificationBase):
@@ -24,8 +24,8 @@ class Scenes15Dataset(_ClassificationBase):
     def __init__(
             self,
             root_dir: str,
-            image_size: tuple[int, int] | None=None,
-            preserve_aspect_ratio: bool=True,
+            image_size: tuple[int, int] | None = None,
+            preserve_aspect_ratio: bool = True,
         ):
         """
         15-category Scenes dataset loader.

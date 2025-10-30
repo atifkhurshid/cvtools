@@ -17,18 +17,18 @@ import os
 import numpy as np
 import pandas as pd
 
-from .._base import _ClassificationBase
 from ....image import imread
+from .._base import _ClassificationBase
 
 
 class CXRDataset(_ClassificationBase):
     def __init__(
             self,
             root_dir: str,
-            image_size: tuple[int, int] | None=None,
-            preserve_aspect_ratio: bool=False,
-            train: bool=True,
-            binary: bool=True
+            image_size: tuple[int, int] | None = None,
+            preserve_aspect_ratio: bool = False,
+            train: bool = True,
+            binary: bool = True
     ):
         """
         NIH Chest X-Ray dataset loader.
@@ -99,7 +99,8 @@ class CXRDataset(_ClassificationBase):
         
         # Convert the multiclass textual labels to binary - 0 for 'No Finding' and 1 for 'Finding'
         if binary:
-            self.data['Finding Labels'] = self.data['Finding Labels'].apply(lambda x: "Normal" if x == 'No Finding' else "Abnormal")
+            self.data['Finding Labels'] = self.data['Finding Labels'].apply(
+                lambda x: "Normal" if x == 'No Finding' else "Abnormal")
 
         self.labels = self.data['Finding Labels'].tolist()
         self.classes = sorted(self.data['Finding Labels'].unique().tolist())
@@ -122,18 +123,18 @@ class CXRDataset(_ClassificationBase):
         tuple[np.ndarray, int]
             A tuple containing the image as a numpy array and its corresponding label index.
         """
-        # Read filename from the DataFrame to complete image path
-        img_path = os.path.join(self.images_dir, str(self.data.loc[index, 'Image Index']))
+        img_path = os.path.join(
+            self.images_dir,
+            str(self.data.loc[index, 'Image Index'])
+        )
 
-        # Read image as grayscale
         image = imread(
             img_path,
-            mode="L",
+            mode="GRAY",
             size=self.image_size,
             preserve_aspect_ratio=self.preserve_aspect_ratio,
         )
 
-        # Read label from the DataFrame and convert to index
         label = self.class_name_to_index(self.labels[index])
 
         return image, label

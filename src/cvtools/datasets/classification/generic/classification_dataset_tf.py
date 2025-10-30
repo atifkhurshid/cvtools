@@ -4,10 +4,11 @@ TensorFlow Wrapper for generic image classification dataloader
 
 # Author: Atif Khurshid
 # Created: 2022-12-18
-# Modified: 2025-06-18
-# Version: 1.0
+# Modified: 2025-10-30
+# Version: 1.1
 # Changelog:
 #     - 2025-06-18: Updated documentation and type hints.
+#     - 2025-10-30: Updated arguments to match base class.
 
 import numpy as np
 import tensorflow as tf
@@ -17,7 +18,16 @@ from .classification_dataset import ClassificationDataset
 
 
 class ClassificationDatasetTF(ClassificationDataset, Sequence):
-    def __init__(self, *args, **kwargs):
+    def __init__(
+            self,
+            root_dir: str,
+            exts: list[str] = ['.jpg', '.png'],
+            image_mode: str | int = 'RGB',
+            image_size: tuple[int, int] | None = None,
+            preserve_aspect_ratio: bool = True,
+            batch_size: int = 32,
+            shuffle: bool = False,
+        ):
         """
         TensorFlow wrapper class for generic image classification dataset.
 
@@ -25,15 +35,21 @@ class ClassificationDatasetTF(ClassificationDataset, Sequence):
 
         Parameters
         ----------
-        *args : tuple
-            Positional arguments passed to the ClassificationDataset constructor.
-        **kwargs : dict
-            Keyword arguments passed to the ClassificationDataset constructor.
-            - batch_size : int, optional
-                Number of samples per batch. Default is 32.
-            - shuffle : bool, optional
-                Whether to shuffle the dataset at the end of each epoch. Default is False.
-        
+        root_dir : str
+            Path to the root directory containing class subdirectories.
+        exts : list[str], optional
+            List of file extensions to consider as valid images. Default is ['.jpg', '.png'].
+        image_mode : str | int, optional
+            Mode to read images. Can be 'RGB', 'GRAY', or a cv2.IMREAD_... flag. Default is 'RGB'.
+        image_size : tuple[int, int] | None, optional
+            Size to which images will be resized. If None, images will not be resized. Default is None.
+        preserve_aspect_ratio : bool, optional
+            If True, images will be resized while preserving their aspect ratio. Default is True.
+        batch_size : int, optional
+            Number of samples per batch. Default is 32.
+        shuffle : bool, optional
+            Whether to shuffle the dataset at the end of each epoch. Default is False.
+
         Examples
         --------
         >>> from cvtools.datasets.classification.tensorflow import ClassificationDatasetTF
@@ -42,10 +58,10 @@ class ClassificationDatasetTF(ClassificationDataset, Sequence):
         ...     # Process each batch of images and labels
         ...     pass
         """
-        self.batch_size = kwargs.pop("batch_size", 32)
-        self.shuffle = kwargs.pop("shuffle", False)
+        super().__init__(root_dir, exts, image_mode, image_size, preserve_aspect_ratio)
 
-        super().__init__(*args, **kwargs)
+        self.batch_size = batch_size
+        self.shuffle = shuffle
 
         self.on_epoch_end()
 
