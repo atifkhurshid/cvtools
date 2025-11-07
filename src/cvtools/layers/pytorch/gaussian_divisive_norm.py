@@ -4,12 +4,13 @@ Gaussian Divisive Normalization Layer
 
 # Author: Atif Khurshid
 # Created: 2025-06-25
-# Modified: 2025-10-24
-# Version: 1.3
+# Modified: 2025-11-07
+# Version: 1.4
 # Changelog:
 #     - 2025-08-01: Added documentation and type hints.
 #     - 2025-10-06: Made beta parameter trainable.
 #     - 2025-10-24: Updated weight initialization and fixed a few bugs.
+#     - 2025-11-07: Improved padding handling to fix edge artifacts.
 
 from typing import Union
 
@@ -80,9 +81,9 @@ class GaussianDivisiveNorm(nn.Module):
         self.trainable = trainable
 
         if padding == "auto":
-            self.padding = (kernel_size // 2, kernel_size // 2)
+            self.padding = [kernel_size // 2] * 4
         else:
-            self.padding = (padding, padding)
+            self.padding = [padding] * 4
 
         self.sigma_x = self._create_parameter(sigma, torch.float, trainable)
         self.sigma_y = self._create_parameter(sigma, torch.float, trainable)
@@ -124,7 +125,10 @@ class GaussianDivisiveNorm(nn.Module):
         if self.weight is None or self.trainable:
             self.weight = self._generate_gaussian_kernel()
 
-        div = F.conv2d(x, self.weight, stride=self.stride, padding=self.padding, groups=self.in_channels)
+        div = F.conv2d(
+            F.pad(x, self.padding, mode='replicate'),
+            self.weight, stride=self.stride, groups=self.in_channels
+        )
         div = div.sum(dim=1, keepdim=True) + self.beta  # Sum over channels and add beta
 
         x = x / (div + 1e-6)

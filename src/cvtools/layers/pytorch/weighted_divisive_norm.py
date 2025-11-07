@@ -4,10 +4,10 @@ Weighted Divisive Normalization Layer
 
 # Author: Atif Khurshid
 # Created: 2025-10-23
-# Modified: None
-# Version: 1.0
+# Modified: 2025-11-07
+# Version: 1.1
 # Changelog:
-#    - None
+#    - 2025-11-07: Improved padding handling to fix edge artifacts.
 
 import math
 
@@ -76,6 +76,7 @@ class WeightedDivisiveNorm(nn.Module):
                 requires_grad=True
             )
             nn.init.kaiming_uniform_(self.surround_weight, a=math.sqrt(5))
+            self.surround_padding = [surround_size // 2] * 4
 
         self.gamma = None
         self.beta = None
@@ -108,7 +109,8 @@ class WeightedDivisiveNorm(nn.Module):
 
         if self.surround_weight is not None:
             surround_weight = torch.abs(self.surround_weight)
-            div = div + F.conv2d(x2, surround_weight, padding=1, groups=self.in_channels)
+            x2 = F.pad(x2, self.surround_padding, mode='replicate')
+            div = div + F.conv2d(x2, surround_weight, groups=self.in_channels)
 
         div = div + torch.abs(self.epsilon.view(1, -1, 1, 1))
         div = torch.sqrt(div)

@@ -4,10 +4,11 @@ Spatial Layer Normalization Layer
 
 # Author: Atif Khurshid
 # Created: 2025-10-07
-# Modified: 2025-10-21
-# Version: 1.1
+# Modified: 2025-11-07
+# Version: 1.2
 # Changelog:
 #    - 2025-10-21: Changed dimensions of affine parameters to match input channels.
+#    - 2025-11-07: Improved padding handling to fix edge artifacts.
 
 import torch
 import torch.nn as nn
@@ -69,9 +70,9 @@ class SpatialLayerNorm(nn.Module):
             self.generate_unit_kernel(suppression_kernel_size),
             requires_grad=False
         )
-        self.summation_padding = summation_kernel_size // 2
-        self.suppression_padding = suppression_kernel_size // 2
-        
+        self.summation_padding = [summation_kernel_size // 2] * 4
+        self.suppression_padding = [suppression_kernel_size // 2] * 4
+
         self.sigma = nn.Parameter(torch.tensor(sigma), requires_grad=False)
         if trainable_sigma:
             self.sigma.requires_grad = True
@@ -105,12 +106,18 @@ class SpatialLayerNorm(nn.Module):
             Normalized tensor of the same shape as input.
         """
         x_mean = x.mean(dim=1, keepdim=True)    # Calculate mean across channels first
-        x_mean = F.conv2d(x_mean, self.summation_kernel, padding=self.summation_padding)    # Then across spatial dimensions
+        x_mean = F.conv2d(                      # Then across spatial dimensions
+            F.pad(x_mean, self.summation_padding, mode='replicate'),
+            self.summation_kernel
+        )
         normed = x - x_mean
 
         x2 = torch.square(normed)
         x2_mean = x2.mean(dim=1, keepdim=True)
-        x2_mean = F.conv2d(x2_mean, self.suppression_kernel, padding=self.suppression_padding)
+        x2_mean = F.conv2d(
+            F.pad(x2_mean, self.suppression_padding, mode='replicate'),
+            self.suppression_kernel,
+        )
         denom = torch.sqrt(x2_mean + torch.square(self.sigma))
         normed = normed / denom
 
