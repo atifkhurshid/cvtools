@@ -4,13 +4,14 @@ Gaussian Divisive Normalization Layer
 
 # Author: Atif Khurshid
 # Created: 2025-06-25
-# Modified: 2025-11-07
-# Version: 1.4
+# Modified: 2025-11-10
+# Version: 1.5
 # Changelog:
 #     - 2025-08-01: Added documentation and type hints.
 #     - 2025-10-06: Made beta parameter trainable.
 #     - 2025-10-24: Updated weight initialization and fixed a few bugs.
 #     - 2025-11-07: Improved padding handling to fix edge artifacts.
+#     - 2025-11-10: Fixed kernel generation according to the original paper.
 
 from typing import Union
 
@@ -91,7 +92,7 @@ class GaussianDivisiveNorm(nn.Module):
         self.A = self._create_parameter(1, torch.float, trainable)
         self.u = self._create_parameter(0, torch.float, trainable)
         self.v = self._create_parameter(0, torch.float, trainable)
-        self.beta = nn.Parameter(torch.zeros(1), requires_grad=trainable)
+        self.beta = nn.Parameter(torch.zeros(in_channels,), requires_grad=trainable)
 
         if trainable:
             self._init_weights(self.sigma_x, sigma)
@@ -100,6 +101,7 @@ class GaussianDivisiveNorm(nn.Module):
             self._init_weights(self.A, 1)
             self._init_weights(self.u, 0)
             self._init_weights(self.v, 0)
+            self._init_weights(self.beta, 0)
 
         self.weight = None
 
@@ -126,10 +128,10 @@ class GaussianDivisiveNorm(nn.Module):
             self.weight = self._generate_gaussian_kernel()
 
         div = F.conv2d(
-            F.pad(x, self.padding, mode='replicate'),
-            self.weight, stride=self.stride, groups=self.in_channels
+            F.pad(x, self.padding, mode='reflect'),
+            self.weight, stride=self.stride
         )
-        div = div.sum(dim=1, keepdim=True) + self.beta  # Sum over channels and add beta
+        div = div + torch.abs(self.beta).view(1, -1, 1, 1)
 
         x = x / (div + 1e-6)
 
@@ -154,7 +156,7 @@ class GaussianDivisiveNorm(nn.Module):
         trainable : bool
             If True, the parameter will be trainable.
         """
-        data = torch.ones(self.in_channels, dtype=dtype) * value
+        data = torch.ones((self.in_channels, self.in_channels), dtype=dtype) * value
 
         return nn.Parameter(data, trainable)
     
@@ -170,20 +172,21 @@ class GaussianDivisiveNorm(nn.Module):
         mean : float
             The mean of the normal distribution.
         """
-        nn.init.normal_(parameter, mean=mean, std=0.1)
+        nn.init.normal_(parameter, mean=mean, std=0.05)
 
 
     def _generate_gaussian_kernel(self):
         """
-        Updates the weights of the Gaussian kernels based on the current parameters.
+        Generates the weights of the Gaussian kernels based on current parameters.
         """
         # Adapted from: github.com/dicarlolab/vonenet
-        sigma_x = self.sigma_x.view(-1, 1, 1)
-        sigma_y = self.sigma_y.view(-1, 1, 1)
-        theta = self.theta.view(-1, 1, 1)
-        A = self.A.view(-1, 1, 1)
-        u = self.u.view(-1, 1, 1)
-        v = self.v.view(-1, 1, 1)
+        view_shape = (self.in_channels, self.in_channels, 1, 1)
+        sigma_x = torch.abs(self.sigma_x).view(view_shape) + 1e-5
+        sigma_y = torch.abs(self.sigma_y).view(view_shape) + 1e-5
+        theta = self.theta.view(view_shape)
+        A = torch.abs(self.A).view(view_shape)
+        u = self.u.view(view_shape)
+        v = self.v.view(view_shape)
 
         device = sigma_x.device
 
@@ -193,16 +196,15 @@ class GaussianDivisiveNorm(nn.Module):
             torch.arange(-n, n + 1, device=device),
             indexing='ij'
         )
-        x = x.repeat(self.in_channels, 1, 1)
-        y = y.repeat(self.in_channels, 1, 1)
+        x = x.repeat(view_shape)
+        y = y.repeat(view_shape)
 
         ct = torch.cos(theta)
         st = torch.sin(theta)
         rotx = x * ct + y * st
         roty = -x * st + y * ct
 
-        gaussian = torch.zeros(roty.shape, dtype=torch.float32, device=device)
-        gaussian[:] = (A / (2 * torch.pi * sigma_x * sigma_y)) * torch.exp(
+        gaussian = (A / (2 * torch.pi * sigma_x * sigma_y)) * torch.exp(
             -0.5 * ((rotx + u)**2 / sigma_x**2 + (roty + v)**2 / sigma_y**2))
 
-        return gaussian.unsqueeze(1)  # Shape: (in_channels, 1, kernel_size, kernel_size)
+        return gaussian
