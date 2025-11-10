@@ -107,7 +107,7 @@ class SpatialLayerNorm(nn.Module):
         """
         x_mean = x.mean(dim=1, keepdim=True)    # Calculate mean across channels first
         x_mean = F.conv2d(                      # Then across spatial dimensions
-            F.pad(x_mean, self.summation_padding, mode='replicate'),
+            F.pad(x_mean, self.summation_padding, mode='reflect'),
             self.summation_kernel
         )
         normed = x - x_mean
@@ -115,7 +115,7 @@ class SpatialLayerNorm(nn.Module):
         x2 = torch.square(normed)
         x2_mean = x2.mean(dim=1, keepdim=True)
         x2_mean = F.conv2d(
-            F.pad(x2_mean, self.suppression_padding, mode='replicate'),
+            F.pad(x2_mean, self.suppression_padding, mode='reflect'),
             self.suppression_kernel,
         )
         denom = torch.sqrt(x2_mean + torch.square(self.sigma))

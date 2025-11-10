@@ -95,11 +95,11 @@ class LearnableDivisiveNorm(nn.Module):
             semisaturation_constant = torch.pow(semisaturation_constant, exponent)
 
         divisor = self.avgpool(
-            F.pad(x, self.pool_padding, mode='replicate')
+            F.pad(x, self.pool_padding, mode='reflect')
         )
 
         divisor = F.conv2d(
-            F.pad(divisor, self.surround_padding, mode='replicate'),
+            F.pad(divisor, self.surround_padding, mode='reflect'),
             torch.abs(self.weights)
         )
         divisor = divisor + semisaturation_constant

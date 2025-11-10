@@ -109,7 +109,7 @@ class WeightedDivisiveNorm(nn.Module):
 
         if self.surround_weight is not None:
             surround_weight = torch.abs(self.surround_weight)
-            x2 = F.pad(x2, self.surround_padding, mode='replicate')
+            x2 = F.pad(x2, self.surround_padding, mode='reflect')
             div = div + F.conv2d(x2, surround_weight, groups=self.in_channels)
 
         div = div + torch.abs(self.epsilon.view(1, -1, 1, 1))
