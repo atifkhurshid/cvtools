@@ -109,7 +109,7 @@ class PyTorchCNNModel(PyTorchModel):
                     input: torch.Tensor,
                     output: torch.Tensor
                 ):
-                self.activations[name] = output.detach().cpu()
+                self.activations[name] = output.detach().clone().cpu()
                 
             return hook
         
