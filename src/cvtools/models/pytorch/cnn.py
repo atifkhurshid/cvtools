@@ -4,10 +4,11 @@ Base class for CNN models.
 
 # Author: Atif Khurshid
 # Created: 2025-11-11
-# Modified: 
-# Version: 1.0
+# Modified: 2025-11-11
+# Version: 1.1
 # Changelog:
 #     - 2025-11-11: Initial version.
+#     - 2025-11-11: Changed init weights to allow submodule initialization only.
 
 import math
 from typing import Callable
@@ -55,19 +56,26 @@ class PyTorchCNNModel(PyTorchModel):
         return x
 
 
-    def init_weights(self, a: float = 0, nonlinearity: str = 'relu'):
+    def init_weights(
+            self,
+            model: nn.Module,
+            nonlinearity: str = 'relu',
+            a: float = 0,
+        ):
         """
         Initialize the weights of the model using Kaiming uniform initialization.
 
         Parameters
         ----------
+        model : nn.Module
+            The model or submodule whose weights are to be initialized.
+        nonlinearity : str, optional
+            The non-linear function used after convolutional layers, by default 'relu'.
         a : float, optional
             The negative slope of the rectifier used after this layer (only
             used with 'leaky_relu'), by default 0.
-        nonlinearity : str, optional
-            The non-linear function used after convolutional layers, by default 'relu'.
         """
-        for module in self.modules():
+        for module in model.modules():
             
             bias = False
             if isinstance(module, nn.Conv2d):
