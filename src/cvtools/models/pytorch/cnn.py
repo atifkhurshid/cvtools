@@ -132,3 +132,21 @@ class PyTorchCNNModel(PyTorchModel):
         """
         for param in self.features.parameters():
             param.requires_grad = True
+
+
+    def replace_inplace_relus(self, module: nn.Module):
+        """
+        Recursively replace all inplace ReLU activations
+        with non-inplace versions.
+
+        Parameters
+        ----------
+        module : nn.Module
+            The module in which to replace inplace ReLUs.
+        """
+        for name, child in module.named_children():
+            if isinstance(child, nn.ReLU):
+                setattr(module, name, nn.ReLU(inplace=False))
+            else:
+                self.replace_inplace_relus(child)
+    
