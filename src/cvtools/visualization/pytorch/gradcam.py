@@ -4,10 +4,11 @@ GradCAM Visualization for PyTorch.
 
 # Author: Atif Khurshid
 # Created: 2025-11-14
-# Modified: None
-# Version: 1.0
+# Modified: 2025-11-17
+# Version: 1.1
 # Changelog:
 #     - 2025-11-14: Initial version.
+#     - 2025-11-17: Added masking functionality in heatmap visualization.
 
 from typing import Optional, Union
 
@@ -17,6 +18,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 from torch.utils.hooks import RemovableHandle
+from scipy.ndimage import gaussian_filter
 
 
 class GradCAMPyTorch(object):
@@ -109,7 +111,9 @@ class GradCAMPyTorch(object):
             normalize: bool = True,
             interpolation: str = 'bilinear',
             cmap: str = 'jet',
-            alpha: float = 0.5
+            alpha: float = 0.5,
+            mask: bool = False,
+            mask_sigma: float = 3.0,
         ):
         """
         Overlay the Grad-CAM heatmap on the original image.
@@ -128,6 +132,10 @@ class GradCAMPyTorch(object):
             The colormap to use for the heatmap. Default is 'jet'.
         alpha : float, optional
             The transparency factor for overlaying the heatmap. Default is 0.5.
+        mask : bool, optional
+            Whether to apply a mask to the heatmap. Default is False.
+        mask_sigma : float, optional
+            The sigma for Gaussian smoothing of the mask. Default is 3.0.
 
         Returns
         -------
@@ -150,6 +158,12 @@ class GradCAMPyTorch(object):
             size=image.shape[:2],
             mode=interpolation,
         ).squeeze(0).squeeze(0)  # Shape: (H, W)
+
+        if mask:
+            mask = (heatmap > 0).numpy().astype(image.dtype)
+            alpha = alpha * mask
+            alpha = gaussian_filter(alpha, sigma=mask_sigma, mode="reflect")
+            alpha = alpha[:, :, np.newaxis]
 
         heatmap = plt.get_cmap(cmap)(heatmap.numpy())[:, :, :3]  # Apply colormap
 
