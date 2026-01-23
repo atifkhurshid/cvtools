@@ -9,6 +9,7 @@ dependencies = [
     "matplotlib",
     "munkres",
     "numpy",
+    "opencv-python",
     "pandas",
     "pillow",
     "scikit-learn",
