@@ -4,14 +4,15 @@ Image I/O module.
 
 # Author: Atif Khurshid
 # Created: 2022-12-16
-# Modified: 2025-10-29
-# Version: 2.5
+# Modified: 2026-01-29
+# Version: 2.6
 # Changelog:
 #     - 2025-05-22: Change image processing library from OpenCV to PIL
 #     - 2025-05-22: Change size parameter ordering to (height, width)
 #     - 2025-05-22: Added resampling parameter to imread()
 #     - 2025-05-23: Changed imread to use processing.resize
 #     - 2025-10-29: Changed image processing library back to OpenCV
+#     - 2026-01-29: Fixed cvtColor bug in imwrite for non-RGB images
 
 from typing import Union, Optional
 
@@ -62,10 +63,14 @@ def imread(
 
     if mode is not None:
         if mode == 'RGB':
-            mode = cv2.COLOR_BGR2RGB
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         elif mode == 'GRAY':
-            mode = cv2.COLOR_BGR2GRAY
-        img = cv2.cvtColor(img, mode)
+            if img.ndim == 3 and img.shape[2] == 3:
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            elif img.ndim == 3 and img.shape[2] == 4:
+                img = cv2.cvtColor(img, cv2.COLOR_BGRA2GRAY)
+        else:
+            img = cv2.cvtColor(img, mode)
 
     if size is not None:
         img = resize(img, size, **kwargs)
@@ -76,7 +81,7 @@ def imread(
 def imwrite(
         filepath: str,
         img: np.ndarray,
-        mode: Optional[str] = None,
+        mode: Optional[Union[str, int]] = None,
     ):
     """
     Write image to file using OpenCV.
@@ -87,7 +92,7 @@ def imwrite(
         Path to save the image file
     img : ndarray
         Image as ndarray
-    mode : int, optional
+    mode : Optional[Union[str, int]], optional
         OpenCV color conversion mode for converting non-standard images
         (e.g., with alpha channel) to BGR-like before saving. RGB images
         are automatically converted to BGR. Default is None.
