@@ -5,10 +5,10 @@ Link: https://ieeexplore.ieee.org/document/1641019
 
 # Author: Atif Khurshid
 # Created: 2022-09-05
-# Modified: None
-# Version: 1.0
+# Modified: 2026-02-10
+# Version: 1.1
 # Changelog:
-#     - None
+#     - 2026:02-10: Used custom imread function.
 
 from pathlib import Path
 from typing import Optional
@@ -16,7 +16,7 @@ from typing import Optional
 import numpy as np
 from PIL import Image
 
-from ....image import imresize
+from ....image import imread
 from .._base import _ClassificationBase
 
 
@@ -94,11 +94,13 @@ class Scenes15Dataset(_ClassificationBase):
             A tuple containing the image as a NumPy array and its corresponding label.
         """
         label = self.labels[index]
-        path = self.root_dir / label / self.filenames[index]
+        img_path = self.root_dir / label / self.filenames[index]
 
-        with Image.open(path) as image:
-            if self.image_size:
-                image = imresize(image, self.image_size, self.preserve_aspect_ratio)
-            image = np.asarray(image, copy=True)
+        image = imread(
+            img_path,
+            mode="RGB",
+            size=self.image_size,
+            preserve_aspect_ratio=self.preserve_aspect_ratio,
+        )
 
         return image, self.class_name_to_index(label)
