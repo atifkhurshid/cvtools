@@ -4,10 +4,11 @@ PyTorch wrapper for NIH Chest X-Ray dataloader.
 
 # Author: Atif Khurshid
 # Created: 2025-05-22
-# Modified: 2025-10-30
-# Version: 1.1
+# Modified: 2026-02-13
+# Version: 1.2
 # Changelog:
 #     - 2025-10-30: Updated arguments to match base class
+#     - 2026-02-13: Updated arguments to match base class
 
 from typing import Callable, Optional
 
@@ -25,8 +26,9 @@ class CXRDatasetPT(CXRDataset, Dataset):
         root_dir: str,
         image_size: Optional[tuple[int, int]] = None,
         preserve_aspect_ratio: bool = False,
+        view: str = "AP",
         train: bool = True,
-        binary: bool = True,
+        class_mode: str = "singleclass",
         transform: Optional[Transform] = None,
         target_transform: Optional[Callable] = None,
     ):
@@ -39,10 +41,18 @@ class CXRDatasetPT(CXRDataset, Dataset):
             Path to the root directory of the dataset.
         image_size : tuple, optional
             Size of the images to be resized to (height, width). Default is None.
+        preserve_aspect_ratio : bool, optional
+            If True, preserve the aspect ratio of the images when resizing. Default is False.
+        view : str, optional
+            View position of the chest X-ray images to load.
+            Can be "AP" (Anterior-Posterior), "PA" (Posterior-Anterior), or both.
+            Default is "AP".
         train : bool, optional
             If True, load training/validation data. If False, load test data. Default is True.
-        binary : bool, optional
-            If True, convert labels to binary (0 for 'No Finding', 1 for 'Finding'). Default is True.
+        class_mode : str, optional
+            Mode for class labels. Can be "binary" (0 for 'No Finding', 1 for 'Finding'),
+            "singleclass" (only the first label for samples with multiple labels),
+            or "multiclass" (all labels as they are). Default is "singleclass".
         transform: torchvision.transforms.v2.Transform | None = None, optional
             Transform to apply to the images.
         target_transform: callable | None = None, optional
@@ -61,7 +71,8 @@ class CXRDatasetPT(CXRDataset, Dataset):
         ...     pass
 
         """
-        super().__init__(root_dir, image_size, preserve_aspect_ratio, train, binary)
+        super().__init__(
+            root_dir, image_size, preserve_aspect_ratio, view, train, class_mode)
 
         self.transform = transform
         self.target_transform = target_transform

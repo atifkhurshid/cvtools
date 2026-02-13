@@ -4,13 +4,15 @@ Dataloader for NIH Chest X-Ray dataset: https://nihcc.app.box.com/v/ChestXray-NI
 
 # Author: Atif Khurshid
 # Created: 2025-05-20
-# Modified: 2025-09-29
-# Version: 2.2
+# Modified: 2026-02-13
+# Version: 2.3
 # Changelog:
 #     - 2025-05-22: Add image_size parameter for resizing images
 #     - 2025-05-22: Remove pytorch dependency and refactor code
 #     - 2025-05-23: Add translation between class names and labels
 #     - 2025-05-29: Add labels as an attribute
+#     - 2026-02-12: Add option to specify view position (AP/PA)
+#     - 2026-02-13: Add option to specify class mode (binary/singleclass/multiclass)
 
 import os
 from typing import Optional
@@ -24,12 +26,13 @@ from .._base import _ClassificationBase
 
 class CXRDataset(_ClassificationBase):
     def __init__(
-            self,
-            root_dir: str,
-            image_size: Optional[tuple[int, int]] = None,
-            preserve_aspect_ratio: bool = False,
-            train: bool = True,
-            binary: bool = True
+        self,
+        root_dir: str,
+        image_size: Optional[tuple[int, int]] = None,
+        preserve_aspect_ratio: bool = False,
+        view: str = "AP",
+        train: bool = True,
+        class_mode: str = "singleclass",
     ):
         """
         NIH Chest X-Ray dataset loader.
@@ -44,11 +47,19 @@ class CXRDataset(_ClassificationBase):
             Path to the root directory of the dataset.
         image_size : tuple, optional
             Size of the images to be resized to (height, width). Default is None.
+        preserve_aspect_ratio : bool, optional
+            If True, preserve the aspect ratio of the images when resizing. Default is False.
+        view : str, optional
+            View position of the chest X-ray images to load.
+            Can be "AP" (Anterior-Posterior), "PA" (Posterior-Anterior), or both.
+            Default is "AP".
         train : bool, optional
             If True, load training/validation data. If False, load test data. Default is True.
-        binary : bool, optional
-            If True, convert labels to binary (0 for 'No Finding', 1 for 'Finding'). Default is True.
-        
+        class_mode : str, optional
+            Mode for class labels. Can be "binary" (0 for 'No Finding', 1 for 'Finding'),
+            "singleclass" (only the first label for samples with multiple labels),
+            or "multiclass" (all labels as they are). Default is "singleclass".
+
         Attributes
         ----------
         images_dir : str
@@ -64,7 +75,7 @@ class CXRDataset(_ClassificationBase):
 
         Examples
         --------
-        >>> dataset = CXRDataset(root_dir='/path/to/dataset', image_size=(224, 224), train=True, binary=True)
+        >>> dataset = CXRDataset(root_dir='/path/to/dataset', image_size=(224, 224), train=True, class_mode="binary")
         >>> print(len(dataset))  # Number of samples in the dataset
         >>> image, label = dataset[0]
         >>> print(image.shape, label)
@@ -83,6 +94,14 @@ class CXRDataset(_ClassificationBase):
         # Load annotations file
         self.data = pd.read_csv(os.path.join(self.root_dir, 'Data_Entry_2017_v2020.csv'))
 
+        # Filter data based on view position
+        assert view in ["AP", "PA", "both"], \
+            f"Invalid view position: {view}. Must be 'AP', 'PA', or 'both'."
+        if view == "AP":
+            self.data = self.data[self.data["View Position"] == "AP"]
+        elif view == "PA":
+            self.data = self.data[self.data["View Position"] == "PA"]
+
         if train:
             # Read list of train/val indices
             with open(os.path.join(self.root_dir, 'train_val_list.txt'), 'r') as f:
@@ -97,11 +116,18 @@ class CXRDataset(_ClassificationBase):
             self.data = self.data[self.data['Image Index'].isin(test_list)]
         # Reset the index of the DataFrame to ensure it is sequential
         self.data = self.data.reset_index(drop=True)
+
+        assert class_mode in ["binary", "singleclass", "multiclass"], \
+            f"Invalid class_mode: {class_mode}. Must be 'binary', 'singleclass', or 'multiclass'."
         
-        # Convert the multiclass textual labels to binary - 0 for 'No Finding' and 1 for 'Finding'
-        if binary:
+        if class_mode == "binary":
+            # Convert the multiclass textual labels to binary
+            # 0 for 'No Finding' and 1 for 'Finding'
             self.data['Finding Labels'] = self.data['Finding Labels'].apply(
                 lambda x: "Normal" if x == 'No Finding' else "Abnormal")
+        elif class_mode == "singleclass":
+            # For samples with multiple labels, take only the first label as the class label
+            self.data['Finding Labels'] = self.data['Finding Labels'].str.split('|').str[0]
 
         self.labels = self.data['Finding Labels'].tolist()
         self.classes = sorted(self.data['Finding Labels'].unique().tolist())
