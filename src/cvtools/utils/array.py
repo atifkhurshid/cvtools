@@ -4,15 +4,61 @@ Numpy array utilities.
 
 # Author: Atif Khurshid
 # Created: 2025-07-04
-# Modified: 2025-08-27
+# Modified: 2026-02-26
 # Version: 1.1
 # Changelog:
-#     - Updated padding logic to allow specific sizes for padding.
+#     - 2025-08-27: Updated padding logic to allow specific sizes for padding.
+#     - 2026-02-26: Added pad_array_to_shape function.
 
 from typing import Union
 from collections import defaultdict
 
 import numpy as np
+
+
+def pad_array_to_shape(
+        array: np.ndarray,
+        target_shape: tuple,
+        **kwargs: dict,
+    ) -> np.ndarray:
+    """
+    Pad a numpy array to a target shape.
+
+    Parameters
+    ----------
+    array : np.ndarray
+        Input array to be padded.
+    target_shape : tuple of int
+        Desired shape of the output array after padding.
+    **kwargs : dict
+        Additional keyword arguments for the padding function.
+
+    Returns
+    -------
+    np.ndarray
+        Padded array with the specified target shape.
+
+    Examples
+    ---------
+    >>> arr = np.array([[1, 2], [3, 4]])
+    >>> padded = pad_array_to_shape(arr, (4, 4), mode='constant', constant_values=0)
+    >>> print(padded)
+    [[0 0 0 0]
+     [0 1 2 0]
+     [0 3 4 0]
+     [0 0 0 0]]
+    """
+    shape = array.shape
+    padding_offsets = [target_shape[i] - shape[i] for i in range(len(shape))]
+    padding = tuple([(p // 2, p - p // 2) for p in padding_offsets])
+
+    padded_array = np.pad(
+        array,
+        padding,
+        **kwargs,
+    )
+
+    return padded_array
 
 
 def group_arrays_by_shape(
