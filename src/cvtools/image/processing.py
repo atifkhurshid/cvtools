@@ -38,10 +38,7 @@ def imresize(
     preserve_aspect_ratio : bool, optional
         Whether to preserve the aspect ratio of the image, default is False.
     fill : int, optional
-        Color to use for padding if aspect ratio is preserved and padding is needed,
-        default is 0.
-    **kwargs : dict, optional
-        Additional keyword arguments passed to the PIL resize method.
+        Value to use for padding when preserving aspect ratio, default is 0.
 
     Returns
     -------
