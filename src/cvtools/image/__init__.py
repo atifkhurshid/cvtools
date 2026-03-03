@@ -1,2 +1,2 @@
 from .io import imshow, imread, imwrite
-from .processing import imresize
+from .processing import imresize, imresize_maximum
