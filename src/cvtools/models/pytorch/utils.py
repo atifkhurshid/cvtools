@@ -4,8 +4,8 @@ Utility functions for PyTorch models.
 
 # Author: Atif Khurshid
 # Created: 2025-06-22
-# Modified: 2025-10-15
-# Version: 1.8
+# Modified: 2026-03-02
+# Version: 1.9
 # Changelog:
 #     - 2025-08-01: Added type hints and documentation.
 #     - 2025-08-01: Updated training loop to include epochs.
@@ -16,6 +16,7 @@ Utility functions for PyTorch models.
 #     - 2025-09-05: Changed feature map extraction function.
 #     - 2025-09-22: Changed validation logic in training function.
 #     - 2025-10-15: Replaced tensorboard with wandb for logging.
+#     - 2026-03-02: Allowed validation on entire dataset.
 
 from pathlib import Path
 from typing import Union, Optional
@@ -214,6 +215,7 @@ def train_classification_model(
         train_dataloader: DataLoader,
         epochs: int = 1,
         val_dataloader: Optional[DataLoader] = None,
+        val_strategy: str = "batch",
         run: Optional[wandb.Run] = None,
         log_interval: int = 10,
     ):
@@ -233,6 +235,11 @@ def train_classification_model(
     val_dataloader : DataLoader | None
         DataLoader containing the validation data. If None, no validation is performed.
         Default is None.
+    val_strategy : str
+        Strategy for validation:
+        - "dataset": Evaluate on the entire validation dataset at each logging interval.
+        - "batch": Evaluate on a single batch from the validation dataset at each logging interval.
+        Default is "batch".
     run : wandb.Run | None
         Weights & Biases run for logging. If None, no logging is performed.
         Default is None.
@@ -248,7 +255,7 @@ def train_classification_model(
     ... ])
     >>> train_classification_model(model, train_dataloader, val_dataloader=val_dataloader)
     """
-    if val_dataloader is not None:
+    if val_dataloader is not None and val_strategy == "batch":
         val_dataloader = InfiniteDataLoader(val_dataloader)
 
     for epoch in range(epochs):
@@ -269,11 +276,17 @@ def train_classification_model(
             if i % log_interval == 0:
 
                 if val_dataloader is not None:
-                    X, y = next(val_dataloader)
-                    batch_loss_val, batch_metric_val, _, _ = evaluate_classification_model(
-                        model, (X, y), report=False, pbar=False)
-                    epoch_loss_val.append(batch_loss_val)
-                    epoch_metric_val.append(batch_metric_val)
+                    if val_strategy == "dataset":
+                        batch_loss_val, batch_metric_val, _, _ = evaluate_classification_model(
+                            model, val_dataloader, report=False, pbar=False)
+                        epoch_loss_val = batch_loss_val
+                        epoch_metric_val = batch_metric_val
+                    elif val_strategy == "batch":
+                        X, y = next(val_dataloader)
+                        batch_loss_val, batch_metric_val, _, _ = evaluate_classification_model(
+                            model, (X, y), report=False, pbar=False)
+                        epoch_loss_val.append(batch_loss_val)
+                        epoch_metric_val.append(batch_metric_val)
 
                 if run is not None:
                     run.log({
