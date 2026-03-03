@@ -4,19 +4,21 @@ Dataloader for Princeton SUN dataset: https://vision.princeton.edu/projects/2010
 
 # Author: Atif Khurshid
 # Created: 2025-05-23
-# Modified: None
-# Version: 1.0
+# Modified: 2026-03-03
+# Version: 1.1
 # Changelog:
-#     - None
+#     - 2026-03-03: Added option to load images from HDF5 file for faster loading.
+#     - 2026-03-03: Enabled dynamic changes in class hierarchy after initialization.
 
 import os
 from typing import Optional
 
+import h5py
 import numpy as np
 import pandas as pd
 
 from .._base import _ClassificationBase
-from ....image import imread
+from ....image import imread, imresize
 from ....utils import stratified_sampling_by_class
 
 
@@ -25,11 +27,12 @@ class SUNDataset(_ClassificationBase):
             self,
             root_dir: str,
             class_hierarchy: str = "basic",
-            image_size: Optional[tuple[int, int]] = None,
-            preserve_aspect_ratio: bool = True,
             train: bool = True,
             split_idx: int = 0,
             n_samples: int = 0,
+            hdf5_mode: bool = False,
+            image_size: Optional[tuple[int, int]] = None,
+            preserve_aspect_ratio: bool = True,
         ):
         """
         Princeton SUN dataset loader.
@@ -44,17 +47,19 @@ class SUNDataset(_ClassificationBase):
             Path to the root directory of the dataset.
         class_hierarchy : str, optional
             Class hierarchy to use. Options are "sun", "basic", "superordinate", or "binary". Default is "basic".
-        image_size : tuple, optional
-            Size of the images to be resized to (height, width). Default is None.
-        preserve_aspect_ratio : bool, optional
-            If True, preserve the aspect ratio of the images when resizing. Default is True.
         train : bool, optional
             If True, load training/validation data. If False, load test data. Default is True.
         split_idx : int, optional
             Index of the split to use. The dataset is divided into 10 splits. Default is 0.
         n_samples : int, optional
             Number of samples to load from each class. This is used for stratified sampling. Default is 0 (no sampling).
-
+        hdf5_mode : bool, optional
+            If True, load images from an HDF5 file instead of individual image files. Default is False.
+        image_size : tuple, optional
+            Size of the images to be resized to (height, width). Default is None.
+        preserve_aspect_ratio : bool, optional
+            If True, preserve the aspect ratio of the images when resizing. Default is True.
+            
         Attributes
         ----------
         images_dir : str
@@ -84,10 +89,16 @@ class SUNDataset(_ClassificationBase):
         self.root_dir = root_dir
         self.image_size = image_size    # (height, width)
         self.preserve_aspect_ratio = preserve_aspect_ratio
+        self.hdf5_mode = hdf5_mode
 
-        self.images_dir = os.path.join(self.root_dir, 'images')
-        if not os.path.exists(self.images_dir):
-            raise FileNotFoundError(f"Directory {self.images_dir} does not exist.")
+        if hdf5_mode:
+            self.images_file = h5py.File(os.path.join(self.root_dir, "images.hdf5"), "r")
+            self.read_image = self._read_image_from_hdf5
+        else:
+            self.images_dir = os.path.join(self.root_dir, 'images')
+            if not os.path.exists(self.images_dir):
+                raise FileNotFoundError(f"Directory {self.images_dir} does not exist.")
+            self.read_image = self._read_image_from_file
     
         splits = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10']
         assert split_idx < len(splits), f"Invalid split index {split_idx}. Must be less than {len(splits)}."
@@ -105,41 +116,42 @@ class SUNDataset(_ClassificationBase):
         # Example: /a/airport/entrance/abckjaskasd.jpg
         # Class is the 2nd (or possibly including 3rd part) of the filepath
         self.filepaths = []
-        self.labels = []
+        self.sun_labels = []
         for filepath in filepaths_list:
             parts = filepath.split("/")
             if len(parts) == 4:
-                self.labels.append(parts[2])
+                self.sun_labels.append(parts[2])
             elif len(parts) == 5:
-                self.labels.append(f"{parts[2]}/{parts[3]}")
+                self.sun_labels.append(f"{parts[2]}/{parts[3]}")
             else:
                 print(f"WARNING: Filepath {filepath} will be skipped because class could not be inferred.")
                 continue
             self.filepaths.append(filepath[1:])    # Remove leading '/'
 
-        assert len(self.filepaths) == len(self.labels), "Number of filepaths and classes do not match."
+        assert len(self.filepaths) == len(self.sun_labels), "Number of filepaths and classes do not match."
 
         # Perform stratified sampling if n_samples is specified
         if n_samples > 0:
-            self.filepaths, self.labels = stratified_sampling_by_class(
+            self.filepaths, self.sun_labels = stratified_sampling_by_class(
                 np.array(self.filepaths),
-                np.array(self.labels),
+                np.array(self.sun_labels),
                 n_samples=n_samples,
                 seed=42
             )
-            self.filepaths = list(self.filepaths)
-            self.labels = list(self.labels)
+            self.filepaths = self.filepaths.tolist()
+            self.sun_labels = self.sun_labels.tolist()
 
-        if class_hierarchy != "sun":
-            # Read class hierarchy from CSV file
-            class_hierarchy_df = pd.read_csv(os.path.join(self.root_dir, 'metadata', 'class_hierarchy.csv'))
-            class_hierarchy_df = class_hierarchy_df.set_index('class')
-            # Change label name according to the class hierarchy
-            self.labels = [class_hierarchy_df.loc[x, class_hierarchy] for x in self.labels]
+        # Read class hierarchy from CSV file
+        class_hierarchy_df = pd.read_csv(os.path.join(self.root_dir, 'metadata', 'class_hierarchy.csv'))
+        class_hierarchy_df = class_hierarchy_df.set_index('class')
+        self.labels_dict = {
+            "sun": self.sun_labels,
+            "basic": [class_hierarchy_df.loc[x, "basic"] for x in self.sun_labels],
+            "superordinate": [class_hierarchy_df.loc[x, "superordinate"] for x in self.sun_labels],
+            "binary": [class_hierarchy_df.loc[x, "binary"] for x in self.sun_labels],
+        }
 
-        self.classes = sorted(list(set(self.labels)))
-
-        self.__initialize__()
+        self.set_class_hierarchy(class_hierarchy)
 
 
     def __getitem__(self, idx: int) -> tuple[np.ndarray, int]:
@@ -157,16 +169,91 @@ class SUNDataset(_ClassificationBase):
         tuple[np.ndarray, int]
             A tuple containing the image as a numpy array and the label index.
         """
-        # Read filepath from the list
+        image = self.read_image(idx)
+        label = self.class_name_to_index(self.labels[idx])
+
+        return image, label
+
+
+    def _read_image_from_file(self, idx: int) -> np.ndarray:
+        """
+        Reads an image from the file system based on the index.
+
+        Parameters
+        ----------
+        idx : int
+            Index of the sample to retrieve.
+
+        Returns
+        -------
+        np.ndarray
+            The image as a numpy array.
+        """
         img_path = os.path.join(self.images_dir, self.filepaths[idx])
-        # Read image as RGB
         image = imread(
             img_path,
             mode="RGB",
             size=self.image_size,
             preserve_aspect_ratio=self.preserve_aspect_ratio,
         )
-        # Read label from the list and convert to label index
-        label = self.class_name_to_index(self.labels[idx])
+        
+        return image
 
-        return image, label
+
+    def _read_image_from_hdf5(self, idx: int) -> np.ndarray:
+        """
+        Reads an image from the HDF5 file based on the index.
+
+        Parameters
+        ----------
+        idx : int
+            Index of the sample to retrieve.
+
+        Returns
+        -------
+        np.ndarray
+            The image as a numpy array.
+        """
+        img_path = self.filepaths[idx]
+        image = self.images_file['/' + img_path][:]
+        if self.image_size is not None:
+            image = imresize(
+                image,
+                size=self.image_size,
+                preserve_aspect_ratio=self.preserve_aspect_ratio,
+            )
+            
+        return image
+    
+
+    def set_class_hierarchy(self, class_hierarchy: str):
+        """
+        Sets the class hierarchy for the dataset.
+
+        Parameters
+        ----------
+        class_hierarchy : str
+            Class hierarchy to use. Options are "sun", "basic", "superordinate", or "binary".
+
+        Raises
+        ------
+        ValueError
+            If an invalid class hierarchy is specified.
+        """
+        if class_hierarchy not in self.labels_dict:
+            raise ValueError(f"Invalid class hierarchy {class_hierarchy}.\
+                             Must be one of {list(self.labels_dict.keys())}.")
+        
+        self.class_hierarchy = class_hierarchy
+        self.labels = self.labels_dict[class_hierarchy]
+        self.classes = sorted(list(set(self.labels)))
+        self.__initialize__()
+
+
+    def __del__(self):
+        """
+        Closes the HDF5 file if it was opened in hdf5_mode when the dataset object is deleted.
+        """
+        if self.hdf5_mode and self.images_file is not None:
+            self.images_file.close()
+            self.images_file = None
