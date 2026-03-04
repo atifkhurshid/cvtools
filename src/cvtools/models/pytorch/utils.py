@@ -4,8 +4,8 @@ Utility functions for PyTorch models.
 
 # Author: Atif Khurshid
 # Created: 2025-06-22
-# Modified: 2026-03-02
-# Version: 1.9
+# Modified: 2026-03-04
+# Version: 2.0
 # Changelog:
 #     - 2025-08-01: Added type hints and documentation.
 #     - 2025-08-01: Updated training loop to include epochs.
@@ -17,6 +17,7 @@ Utility functions for PyTorch models.
 #     - 2025-09-22: Changed validation logic in training function.
 #     - 2025-10-15: Replaced tensorboard with wandb for logging.
 #     - 2026-03-02: Allowed validation on entire dataset.
+#     - 2026-03-04: Added early stopping functionality to training loop.
 
 from pathlib import Path
 from typing import Union, Optional
@@ -31,6 +32,7 @@ from torch.utils.data import Dataset, DataLoader
 
 from .base import PyTorchModel
 from ...utils.pytorch import InfiniteDataLoader
+from ...utils.pytorch import EarlyStopping
 
 
 def extract_features(
@@ -216,6 +218,10 @@ def train_classification_model(
         epochs: int = 1,
         val_dataloader: Optional[DataLoader] = None,
         val_strategy: str = "batch",
+        early_stopping: bool = False,
+        patience: int = 5,
+        min_delta: float = 1e-4,
+        restore_best_weights: bool = True,
         run: Optional[wandb.Run] = None,
         log_interval: int = 10,
     ):
@@ -257,6 +263,13 @@ def train_classification_model(
     """
     if val_dataloader is not None and val_strategy == "batch":
         val_dataloader = InfiniteDataLoader(val_dataloader)
+
+        if early_stopping:
+            early_stopper = EarlyStopping(
+                patience = patience,
+                min_delta = min_delta,
+                restore_best_weights = restore_best_weights
+            )
 
     for epoch in range(epochs):
         model.train()
@@ -307,6 +320,13 @@ def train_classification_model(
             epoch_loss_val = np.mean(epoch_loss_val)
             epoch_metric_val = np.mean(epoch_metric_val)
             print(f"Val Loss: {epoch_loss_val:.4f}, Val Metric: {epoch_metric_val:.4f}", end="")
+
+            if early_stopping:
+                early_stopper.step(model, epoch_loss_val)
+                if early_stopper.early_stop:
+                    print(f"\nEarly stopping triggered at epoch {epoch+1}")
+                    early_stopper.restore(model)
+                    epoch = epochs  # Exit outer loop
         print()
 
         model.on_epoch_end()
