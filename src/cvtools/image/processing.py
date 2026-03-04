@@ -13,9 +13,45 @@ Image processing module.
 #     - 2025-06-08: Allowed to skip aspect ratio preservation if aspect ratio is same
 #     - 2025-10-29: Changed image processing library back to OpenCV
 #     - 2026-03-03: Added imresize_maximum function
+#     - 2026-03-03: Added imscale function
 
 import cv2
 import numpy as np
+
+
+def imscale(
+        img: np.ndarray,
+        scale: float,
+        interpolation: int = cv2.INTER_AREA,
+    ) -> np.ndarray:
+    """
+    Scale image by a given factor.
+
+    Parameters
+    ----------
+    img : ndarray
+        Input image to scale, must be a numpy array.
+    scale : float
+        Scaling factor to apply to the image.
+    interpolation : int, optional
+        Interpolation method used for scaling, default is cv2.INTER_AREA.
+
+    Returns
+    -------
+    np.ndarray
+        Scaled image as a numpy array.
+
+    Examples
+    --------
+    >>> from cvtools.image import imscale
+    >>> import numpy as np
+    >>> img = np.random.randint(0, 256, (300, 400, 3), dtype=np.uint8)
+    >>> scaled_img = imscale(img, 0.5)
+    """
+    new_size = (int(img.shape[1] * scale), int(img.shape[0] * scale)) # (width, height)
+    img = cv2.resize(img, new_size, interpolation=interpolation)
+    
+    return img
 
 
 def imresize(
