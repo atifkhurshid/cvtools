@@ -5,10 +5,10 @@ Link: https://people.csail.mit.edu/torralba/code/spatialenvelope/
 
 # Author: Atif Khurshid
 # Created: 2025-09-03
-# Modified: None
-# Version: 1.0
+# Modified: 2026-03-03
+# Version: 1.1
 # Changelog:
-#     - None
+#     - 2026-03-03: Refactored code to use new image processing functions.
 
 import os
 from typing import Optional
@@ -23,8 +23,10 @@ class Scenes8Dataset(_ClassificationBase):
     def __init__(
             self,
             root_dir: str,
+            image_scale: Optional[float] = None,
             image_size: Optional[tuple[int, int]] = None,
             preserve_aspect_ratio: bool = True,
+            interpolation: Optional[int] = None,
         ):
         """
         8-category Scenes dataset loader.
@@ -38,10 +40,14 @@ class Scenes8Dataset(_ClassificationBase):
         ----------
         root_dir : str
             Path to the root directory of the dataset.
+        image_scale : float, optional
+            Scale factor to resize images. Default is None (no scaling).
         image_size : tuple, optional
             Size of the images to be resized to (height, width). Default is None.
         preserve_aspect_ratio : bool, optional
             If True, preserve the aspect ratio of the images when resizing. Default is True.
+        interpolation : int, optional
+            Interpolation method to use when resizing images. Default is None (uses default interpolation).
 
         Attributes
         ----------
@@ -62,9 +68,14 @@ class Scenes8Dataset(_ClassificationBase):
         ...     # Process each image and label
         ...     pass
         """
+        super().__init__(
+            image_scale=image_scale,
+            image_size=image_size,
+            preserve_aspect_ratio=preserve_aspect_ratio,
+            interpolation=interpolation
+        )
+
         self.root_dir = root_dir
-        self.image_size = image_size    # (height, width)
-        self.preserve_aspect_ratio = preserve_aspect_ratio
 
         self.images_dir = os.path.join(self.root_dir, 'images')
         if not os.path.exists(self.images_dir):
@@ -92,16 +103,10 @@ class Scenes8Dataset(_ClassificationBase):
         tuple[np.ndarray, int]
             A tuple containing the image as a numpy array and the label index.
         """
-        # Read filepath from the list
         img_path = os.path.join(self.images_dir, self.filenames[idx])
-        # Read image as RGB
-        image = imread(
-            img_path,
-            mode="RGB",
-            size=self.image_size,
-            preserve_aspect_ratio=self.preserve_aspect_ratio,
-        )
-        # Read label from the list and convert to label index
+        image = imread(img_path, mode="RGB")
+        image = self._preprocess_image(image)
+
         label = self.class_name_to_index(self.labels[idx])
 
         return image, label

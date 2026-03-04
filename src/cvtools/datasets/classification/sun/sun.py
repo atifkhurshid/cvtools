@@ -5,10 +5,12 @@ Dataloader for Princeton SUN dataset: https://vision.princeton.edu/projects/2010
 # Author: Atif Khurshid
 # Created: 2025-05-23
 # Modified: 2026-03-03
-# Version: 1.1
+# Version: 1.2
 # Changelog:
 #     - 2026-03-03: Added option to load images from HDF5 file for faster loading.
 #     - 2026-03-03: Enabled dynamic changes in class hierarchy after initialization.
+#     - 2026-03-03: Refactored code to remove redundant pytorch dataset classes.
+#     - 2026-03-03: Added support for image scaling.
 
 import os
 from typing import Optional
@@ -18,7 +20,7 @@ import numpy as np
 import pandas as pd
 
 from .._base import _ClassificationBase
-from ....image import imread, imresize
+from ....image import imread
 from ....utils import stratified_sampling_by_class
 
 
@@ -31,8 +33,10 @@ class SUNDataset(_ClassificationBase):
             split_idx: int = 0,
             n_samples: int = 0,
             hdf5_mode: bool = False,
+            image_scale: Optional[float] = None,
             image_size: Optional[tuple[int, int]] = None,
             preserve_aspect_ratio: bool = True,
+            interpolation: Optional[int] = None,
         ):
         """
         Princeton SUN dataset loader.
@@ -55,10 +59,14 @@ class SUNDataset(_ClassificationBase):
             Number of samples to load from each class. This is used for stratified sampling. Default is 0 (no sampling).
         hdf5_mode : bool, optional
             If True, load images from an HDF5 file instead of individual image files. Default is False.
+        image_scale : float, optional
+            Scale factor to resize images. Default is None (no scaling).
         image_size : tuple, optional
             Size of the images to be resized to (height, width). Default is None.
         preserve_aspect_ratio : bool, optional
             If True, preserve the aspect ratio of the images when resizing. Default is True.
+        interpolation : int, optional
+            Interpolation method to use when resizing images. Default is None (uses default interpolation).
             
         Attributes
         ----------
@@ -86,19 +94,24 @@ class SUNDataset(_ClassificationBase):
         ...     pass
 
         """
+        super().__init__(
+            image_scale=image_scale,
+            image_size=image_size,
+            preserve_aspect_ratio=preserve_aspect_ratio,
+            interpolation=interpolation
+        )
+
         self.root_dir = root_dir
-        self.image_size = image_size    # (height, width)
-        self.preserve_aspect_ratio = preserve_aspect_ratio
         self.hdf5_mode = hdf5_mode
 
         if hdf5_mode:
             self.images_file = h5py.File(os.path.join(self.root_dir, "images.hdf5"), "r")
-            self.read_image = self._read_image_from_hdf5
+            self._read_image = self._read_image_from_hdf5
         else:
             self.images_dir = os.path.join(self.root_dir, 'images')
             if not os.path.exists(self.images_dir):
                 raise FileNotFoundError(f"Directory {self.images_dir} does not exist.")
-            self.read_image = self._read_image_from_file
+            self._read_image = self._read_image_from_file
     
         splits = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10']
         assert split_idx < len(splits), f"Invalid split index {split_idx}. Must be less than {len(splits)}."
@@ -169,7 +182,8 @@ class SUNDataset(_ClassificationBase):
         tuple[np.ndarray, int]
             A tuple containing the image as a numpy array and the label index.
         """
-        image = self.read_image(idx)
+        image = self._read_image(idx)
+        image = self._preprocess_image(image)
         label = self.class_name_to_index(self.labels[idx])
 
         return image, label
@@ -190,12 +204,7 @@ class SUNDataset(_ClassificationBase):
             The image as a numpy array.
         """
         img_path = os.path.join(self.images_dir, self.filepaths[idx])
-        image = imread(
-            img_path,
-            mode="RGB",
-            size=self.image_size,
-            preserve_aspect_ratio=self.preserve_aspect_ratio,
-        )
+        image = imread(img_path, mode="RGB")
         
         return image
 
@@ -216,12 +225,6 @@ class SUNDataset(_ClassificationBase):
         """
         img_path = self.filepaths[idx]
         image = self.images_file['/' + img_path][:]
-        if self.image_size is not None:
-            image = imresize(
-                image,
-                size=self.image_size,
-                preserve_aspect_ratio=self.preserve_aspect_ratio,
-            )
             
         return image
     

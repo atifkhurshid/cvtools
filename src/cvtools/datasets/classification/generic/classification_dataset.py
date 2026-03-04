@@ -4,11 +4,12 @@ Generic dataloader for image classification tasks.
 
 # Author: Atif Khurshid
 # Created: 2022-12-18
-# Modified: 2025-10-30
-# Version: 1.1
+# Modified: 2026-03-03
+# Version: 1.2
 # Changelog:
 #     - 2025-06-18: Updated documentation and type hints.
 #     - 2025-10-30: Refactored image loading to use imread function.
+#     - 2026-03-03: Refactored code to use new image processing functions.
 
 from pathlib import Path
 from typing import Optional, Union
@@ -26,8 +27,10 @@ class ClassificationDataset(_ClassificationBase):
             root_dir: str,
             exts: list[str] = ['.jpg', '.png'],
             image_mode: Union[str, int] = 'RGB',
+            image_scale: Optional[float] = None,
             image_size: Optional[tuple[int, int]] = None,
             preserve_aspect_ratio: bool = True,
+            interpolation: Optional[int] = None,
         ):
         """
         Generic classification dataset class.
@@ -43,10 +46,14 @@ class ClassificationDataset(_ClassificationBase):
             List of file extensions to consider as valid images. Default is ['.jpg', '.png'].
         image_mode : str | int, optional
             Mode to read images. Can be 'RGB', 'GRAY', or a cv2.IMREAD_... flag. Default is 'RGB'.
-        image_size : tuple[int, int] | None, optional
-            Size to which images will be resized. If None, images will not be resized. Default is None.
+        image_scale : float, optional
+            Scale factor to resize images. Default is None (no scaling).
+        image_size : tuple, optional
+            Size of the images to be resized to (height, width). Default is None.
         preserve_aspect_ratio : bool, optional
-            If True, images will be resized while preserving their aspect ratio. Default is True.
+            If True, preserve the aspect ratio of the images when resizing. Default is True.
+        interpolation : int, optional
+            Interpolation method to use when resizing images. Default is None (uses default interpolation).
 
         Attributes
         ----------
@@ -73,9 +80,13 @@ class ClassificationDataset(_ClassificationBase):
         ...     # Process each image and label
         ...     pass
         """
+        super().__init__(
+            image_scale=image_scale,
+            image_size=image_size,
+            preserve_aspect_ratio=preserve_aspect_ratio,
+            interpolation=interpolation
+        )
         self.root_dir = Path(root_dir)
-        self.image_size = image_size
-        self.preserve_aspect_ratio = preserve_aspect_ratio
         self.image_mode = image_mode
 
         self.classes = [x.name for x in self.root_dir.iterdir() if not x.is_file()]
@@ -112,12 +123,8 @@ class ClassificationDataset(_ClassificationBase):
         label = self.labels[id]
         image_path = str(self.root_dir / label / self.filenames[id])
 
-        image = imread(
-            image_path,
-            mode=self.image_mode,
-            size=self.image_size,
-            preserve_aspect_ratio=self.preserve_aspect_ratio,
-        )
+        image = imread(image_path, mode=self.image_mode)
+        image = self._preprocess_image(image)
 
         label = self.class_name_to_index(label)
 

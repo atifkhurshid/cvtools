@@ -13,6 +13,7 @@ Dataloader for NIH Chest X-Ray dataset: https://nihcc.app.box.com/v/ChestXray-NI
 #     - 2025-05-29: Add labels as an attribute
 #     - 2026-02-12: Add option to specify view position (AP/PA)
 #     - 2026-02-13: Add option to specify class mode (binary/singleclass/multiclass)
+#     - 2026-03-03: Refactored code to use new image processing functions.
 
 import os
 from typing import Optional
@@ -28,11 +29,13 @@ class CXRDataset(_ClassificationBase):
     def __init__(
         self,
         root_dir: str,
-        image_size: Optional[tuple[int, int]] = None,
-        preserve_aspect_ratio: bool = False,
         view: str = "AP",
         train: bool = True,
         class_mode: str = "singleclass",
+        image_scale: Optional[float] = None,
+        image_size: Optional[tuple[int, int]] = None,
+        preserve_aspect_ratio: bool = True,
+        interpolation: Optional[int] = None,
     ):
         """
         NIH Chest X-Ray dataset loader.
@@ -45,10 +48,6 @@ class CXRDataset(_ClassificationBase):
         ----------
         root_dir : str
             Path to the root directory of the dataset.
-        image_size : tuple, optional
-            Size of the images to be resized to (height, width). Default is None.
-        preserve_aspect_ratio : bool, optional
-            If True, preserve the aspect ratio of the images when resizing. Default is False.
         view : str, optional
             View position of the chest X-ray images to load.
             Can be "AP" (Anterior-Posterior), "PA" (Posterior-Anterior), or both.
@@ -59,7 +58,15 @@ class CXRDataset(_ClassificationBase):
             Mode for class labels. Can be "binary" (0 for 'No Finding', 1 for 'Finding'),
             "singleclass" (only the first label for samples with multiple labels),
             or "multiclass" (all labels as they are). Default is "singleclass".
-
+        image_scale : float, optional
+            Scale factor to resize images. Default is None (no scaling).
+        image_size : tuple, optional
+            Size of the images to be resized to (height, width). Default is None.
+        preserve_aspect_ratio : bool, optional
+            If True, preserve the aspect ratio of the images when resizing. Default is True.
+        interpolation : int, optional
+            Interpolation method to use when resizing images. Default is None (uses default interpolation).
+            
         Attributes
         ----------
         images_dir : str
@@ -83,9 +90,14 @@ class CXRDataset(_ClassificationBase):
         ...     # Process each image and label
         ...     pass
         """
+        super().__init__(
+            image_scale=image_scale,
+            image_size=image_size,
+            preserve_aspect_ratio=preserve_aspect_ratio,
+            interpolation=interpolation
+        )
+
         self.root_dir = root_dir
-        self.image_size = image_size    # (height, width)
-        self.preserve_aspect_ratio = preserve_aspect_ratio
 
         self.images_dir = os.path.join(self.root_dir, 'images')
         if not os.path.exists(self.images_dir):
@@ -154,13 +166,8 @@ class CXRDataset(_ClassificationBase):
             self.images_dir,
             str(self.data.loc[index, 'Image Index'])
         )
-
-        image = imread(
-            img_path,
-            mode="GRAY",
-            size=self.image_size,
-            preserve_aspect_ratio=self.preserve_aspect_ratio,
-        )
+        image = imread(img_path, mode="GRAY")
+        image = self._preprocess_image(image)
 
         label = self.class_name_to_index(self.labels[index])
 

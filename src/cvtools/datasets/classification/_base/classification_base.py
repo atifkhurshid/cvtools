@@ -4,10 +4,16 @@ Base class for classification datasets.
 
 # Author: Atif Khurshid
 # Created: 2025-06-18
-# Modified: 2025-08-28
-# Version: 1.1
+# Modified: 2026-03-03
+# Version: 1.2
 # Changelog:
-#     - 2025-08-28: Fixed bug in class2index mapping
+#     - 2026-03-03: Added _preprocess_image method to handle image scaling and resizing in a consistent way across datasets.
+
+from typing import Optional, Union
+
+import cv2
+
+from ....image import imscale, imresize, imresize_maximum
 
 
 class _ClassificationBase:
@@ -16,12 +22,23 @@ class _ClassificationBase:
     This class provides a common interface for classification datasets.
     """
 
-    def __init__(self):
+    def __init__(
+            self,
+            image_scale: Optional[float] = None,
+            image_size: Optional[Union[int, tuple[int, int]]] = None,
+            preserve_aspect_ratio: bool = True,
+            interpolation: Optional[int] = None,
+        ):
 
         self.classes: list
         self.labels: list
         self.class2index: dict
         self.index2class: dict
+
+        self.image_scale = image_scale
+        self.image_size = image_size
+        self.preserve_aspect_ratio = preserve_aspect_ratio
+        self.interpolation = interpolation if interpolation is not None else cv2.INTER_AREA
 
 
     def __initialize__(self):
@@ -107,3 +124,39 @@ class _ClassificationBase:
             The corresponding class name for the index.
         """
         return self.index2class.get(x, "Unknown")
+
+
+    def _preprocess_image(self, image):
+        """
+        Process the image by applying scaling and resizing if specified.
+
+        Parameters
+        ----------
+        image : np.ndarray
+            The input image to process.
+
+        Returns
+        -------
+        np.ndarray
+            The processed image.
+        """
+        if self.image_scale is not None:
+            image = imscale(image, self.image_scale, interpolation=self.interpolation)
+
+        if self.image_size is not None:
+            if isinstance(self.image_size, int):
+                image = imresize_maximum(
+                    image,
+                    max_size=self.image_size,
+                    interpolation=self.interpolation
+                )
+            else:
+                image = imresize(
+                    image,
+                    size=self.image_size,
+                    preserve_aspect_ratio=self.preserve_aspect_ratio,
+                    interpolation=self.interpolation
+                )
+
+        return image
+    

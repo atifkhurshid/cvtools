@@ -71,7 +71,7 @@ class SavedFeaturesDataset():
         >>> print(features.shape, labels.shape)
         (32, 512) (32,)
         """
-        self.dataset = dataset
+        self._dataset = dataset
         self.features_dir = Path(features_dir)
 
 
@@ -79,7 +79,7 @@ class SavedFeaturesDataset():
         """
         Returns the number of feature files in the dataset.
         """
-        return len(self.dataset)
+        return len(self._dataset)
 
 
     def __getitem__(self, index: int) -> tuple[np.ndarray, int]:
@@ -111,4 +111,4 @@ class SavedFeaturesDataset():
         name : str
             Name of the attribute to access.
         """
-        return getattr(self.dataset, name)
+        return getattr(self._dataset, name)
