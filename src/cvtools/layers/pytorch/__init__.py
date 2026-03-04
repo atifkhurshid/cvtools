@@ -4,3 +4,4 @@ from .divisive_feature_norm import DivisiveFeatureNorm
 from .learnable_divisive_norm import LearnableDivisiveNorm
 from .spatial_layer_norm import SpatialLayerNorm
 from .weighted_divisive_norm import WeightedDivisiveNorm
+from .square_padding import SquarePad2D
