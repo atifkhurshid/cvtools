@@ -261,8 +261,9 @@ def train_classification_model(
     ... ])
     >>> train_classification_model(model, train_dataloader, val_dataloader=val_dataloader)
     """
-    if val_dataloader is not None and val_strategy == "batch":
-        val_dataloader = InfiniteDataLoader(val_dataloader)
+    if val_dataloader is not None:
+        if val_strategy == "batch":
+            val_dataloader = InfiniteDataLoader(val_dataloader)
 
         if early_stopping:
             early_stopper = EarlyStopping(
@@ -271,7 +272,9 @@ def train_classification_model(
                 restore_best_weights = restore_best_weights
             )
 
-    for epoch in range(epochs):
+    epoch = 0
+    while epoch < epochs:
+        epoch += 1
         model.train()
 
         epoch_loss_train = []
@@ -280,7 +283,7 @@ def train_classification_model(
         epoch_metric_val = []
 
         for i, (X, y) in tqdm(enumerate(train_dataloader),
-                              total=len(train_dataloader), desc=f"Epoch {epoch+1}/{epochs}"):
+                              total=len(train_dataloader), desc=f"Epoch {epoch}/{epochs}"):
             batch_loss_train = model.train_step(X, y)
             batch_metric_train = model.compute_metric()
             epoch_loss_train.append(batch_loss_train)
@@ -314,7 +317,7 @@ def train_classification_model(
         epoch_loss_train = np.mean(epoch_loss_train)
         epoch_metric_train = np.mean(epoch_metric_train)
 
-        print(f"Epoch {epoch+1}/{epochs}, ", end="")
+        print(f"Epoch {epoch}/{epochs}, ", end="")
         print(f"Train Loss: {epoch_loss_train:.4f}, Train Metric: {epoch_metric_train:.4f}, ", end="")
         if val_dataloader is not None:
             epoch_loss_val = np.mean(epoch_loss_val)
@@ -324,7 +327,7 @@ def train_classification_model(
             if early_stopping:
                 early_stopper.step(model, epoch_loss_val)
                 if early_stopper.early_stop:
-                    print(f"\nEarly stopping triggered at epoch {epoch+1}")
+                    print(f"\nEarly stopping triggered at epoch {epoch}")
                     early_stopper.restore(model)
                     epoch = epochs  # Exit outer loop
         print()

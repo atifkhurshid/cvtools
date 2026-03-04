@@ -9,7 +9,7 @@ Early stopping utility for PyTorch models.
 # Changelog:
 #     - 2026-03-04: Initial implementation of EarlyStopping class.
 
-from ...models.pytorch import PyTorchModel
+from torch.nn import Module
 
 
 class EarlyStopping(object):
@@ -63,7 +63,7 @@ class EarlyStopping(object):
 
     def step(
             self,
-            model: PyTorchModel,
+            model: Module,
             val_loss: float,
         ) -> None:
         """
@@ -73,7 +73,7 @@ class EarlyStopping(object):
 
         Parameters
         ----------
-        model : PyTorchModel
+        model : Module
             The model being trained, used to save the best weights if 
             restore_best_weights is True.
         val_loss : float
@@ -95,14 +95,14 @@ class EarlyStopping(object):
                 self.early_stop = True
     
 
-    def restore(self, model: PyTorchModel) -> None:
+    def restore(self, model: Module) -> None:
         """
         Restores the model weights from the epoch with the best validation loss,
         if restore_best_weights is True and best_state is not None.
 
         Parameters
         ----------
-        model : PyTorchModel
+        model : Module
             The model whose weights are to be restored.
         """
         if self.restore_best_weights and self.best_state is not None:
