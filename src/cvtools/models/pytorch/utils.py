@@ -334,4 +334,7 @@ def train_classification_model(
 
         model.on_epoch_end()
     
+    if early_stopping:
+        early_stopper.restore(model)
+
     model.eval()
