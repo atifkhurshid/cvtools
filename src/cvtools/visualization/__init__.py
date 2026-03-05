@@ -3,3 +3,6 @@ from .features import all_feature_visualizations
 from .features import visualize_feature_distribution
 from .clustering import visualize_cluster_variability
 from .clustering import visualize_clustering_stability
+from .classification import plot_roc_curve
+from .classification import plot_roc_curves
+from .classification import display_confusion_matrix

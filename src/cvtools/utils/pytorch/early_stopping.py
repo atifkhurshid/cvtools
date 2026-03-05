@@ -105,7 +105,7 @@ class EarlyStopping(object):
         model : Module
             The model whose weights are to be restored.
         """
-        if self.restore_best_weights and self.best_state is not None:
+        if self.restore_best_weights and self.best_state is not None and self.counter > 0:
             print("Restoring model weights from epoch {} with validation loss {:.4f}".format(
                 self.best_epoch, self.best_loss
             ))

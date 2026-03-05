@@ -4,8 +4,8 @@ Utility functions for PyTorch models.
 
 # Author: Atif Khurshid
 # Created: 2025-06-22
-# Modified: 2026-03-04
-# Version: 2.0
+# Modified: 2026-03-05
+# Version: 2.1
 # Changelog:
 #     - 2025-08-01: Added type hints and documentation.
 #     - 2025-08-01: Updated training loop to include epochs.
@@ -18,6 +18,7 @@ Utility functions for PyTorch models.
 #     - 2025-10-15: Replaced tensorboard with wandb for logging.
 #     - 2026-03-02: Allowed validation on entire dataset.
 #     - 2026-03-04: Added early stopping functionality to training loop.
+#     - 2026-03-05: Updated test_classification_model to optionally return logits for evaluation.
 
 from pathlib import Path
 from typing import Union, Optional
@@ -27,7 +28,6 @@ import torch
 import numpy as np
 import torch.nn as nn
 from tqdm import tqdm
-from sklearn.metrics import classification_report
 from torch.utils.data import Dataset, DataLoader
 
 from .base import PyTorchModel
@@ -142,32 +142,37 @@ def save_feature_maps(
             index += 1
 
 
-def evaluate_classification_model(
+def test_classification_model(
         model: PyTorchModel,
         data: Union[DataLoader, tuple],
-        report: bool = True,
+        return_outputs: bool = False,
         pbar: bool = True,
-    ) -> tuple[float, float, np.ndarray, np.ndarray]:
+    ) -> tuple[float, float, Optional[np.ndarray], np.ndarray, np.ndarray]:
     """
-    Evaluate a classification model on the given dataset.
+    Perform inference on a given classification model and dataset.
 
-    Requires the model to implement the `eval_step` method.
+    Requires the model to implement the `test_step` method.
 
     Parameters
     -----------
     model : PyTorchModel
-        The PyTorch model to evaluate.
+        The PyTorch model to test.
     data : DataLoader | tuple 
         DataLoader containing the evaluation data or a tuple (X, y).
-    report : bool
-        Whether to print the classification report. Default is True.
+    return_outputs : bool
+        Whether to return the model outputs along with the predictions and loss. Default is False.
     pbar : bool
         Whether to show a progress bar during evaluation. Default is True.
 
     Returns
     --------
-    tuple[float, float, np.ndarray, np.ndarray]
-        The loss and metric values for the evaluation, along with the predicted and true labels.
+    tuple[float, float, Optional[np.ndarray], np.ndarray, np.ndarray]
+    A tuple containing:
+        - loss: The average loss over the dataset.
+        - metric: The computed metric value over the dataset.
+        - outputs: The model outputs (logits) for each sample if return_outputs is True, otherwise None.
+        - y_pred: The predicted labels for each sample.
+        - y_true: The true labels for each sample.
 
     Examples
     ---------
@@ -176,40 +181,46 @@ def evaluate_classification_model(
     ...     nn.ReLU(),
     ...     nn.Linear(20, 1)
     ... ])
-    >>> evaluate_classification_model(model, dataloader)
+    >>> test_classification_model(model, dataloader)
     """
     model.eval()
     model.metric.reset()
 
     if isinstance(data, DataLoader):
         n_batches = len(data)
+        outputs = []
         y_pred, y_true = [], []
         loss = 0.0
         with torch.no_grad():
             for X, y in tqdm(data, total=n_batches, disable=not pbar):
-                batch_pred, batch_loss = model.eval_step(X, y)
+                batch_outputs, batch_loss, batch_pred = model.test_step(X, y, return_outputs)
                 y_pred.extend(batch_pred.numpy())
                 y_true.extend(y.numpy())
                 loss += batch_loss
+                if return_outputs:
+                    outputs.extend(batch_outputs.numpy())
         y_pred = np.array(y_pred)
         y_true = np.array(y_true)
         loss /= n_batches
+        if return_outputs:
+            outputs = np.array(outputs)
     else:
         X, y = data
         with torch.no_grad():
-            y_pred, loss = model.eval_step(X, y)
+            outputs, loss, y_pred = model.test_step(X, y, return_outputs)
         y_pred = y_pred.numpy()
         y_true = y.numpy()
+        if return_outputs:
+            outputs = outputs.numpy()
 
     metric = model.compute_metric()
 
-    if report:
-        print(f"Test Loss: {loss:>7f}, Test Metric: {metric:>7f}")
-        print(classification_report(y_true, y_pred, digits=4, zero_division=0))
-
     model.train()
 
-    return loss, metric, y_pred, y_true
+    if not return_outputs:
+        outputs = None
+
+    return loss, metric, outputs, y_pred, y_true
 
 
 def train_classification_model(
@@ -228,7 +239,7 @@ def train_classification_model(
     """
     Train a PyTorch classification model using the provided dataloader.
 
-    Requires the model to implement the `train_step` and `eval_step` methods.
+    Requires the model to implement the `train_step` and `test_step` methods.
 
     Parameters:
     -----------
@@ -293,14 +304,14 @@ def train_classification_model(
 
                 if val_dataloader is not None:
                     if val_strategy == "dataset":
-                        batch_loss_val, batch_metric_val, _, _ = evaluate_classification_model(
-                            model, val_dataloader, report=False, pbar=False)
+                        batch_loss_val, batch_metric_val, _, _, _ = test_classification_model(
+                            model, val_dataloader, return_outputs=False, pbar=False)
                         epoch_loss_val = batch_loss_val
                         epoch_metric_val = batch_metric_val
                     elif val_strategy == "batch":
                         X, y = next(val_dataloader)
-                        batch_loss_val, batch_metric_val, _, _ = evaluate_classification_model(
-                            model, (X, y), report=False, pbar=False)
+                        batch_loss_val, batch_metric_val, _, _, _ = test_classification_model(
+                            model, (X, y), return_outputs=False, pbar=False)
                         epoch_loss_val.append(batch_loss_val)
                         epoch_metric_val.append(batch_metric_val)
 

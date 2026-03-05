@@ -5,3 +5,4 @@ from .clustering import maximum_cluster_assignment_score
 from .clustering import intra_cluster_variability
 from .clustering import inter_cluster_variability
 from .clustering import silhouette_score
+from .classification import compute_roc

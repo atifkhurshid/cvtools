@@ -4,11 +4,12 @@ Base class for PyTorch models.
 
 # Author: Atif Khurshid
 # Created: 2025-06-22
-# Modified: 2025-09-04
-# Version: 2.0
+# Modified: 2026-03-05
+# Version: 2.1
 # Changelog:
 #     - 2025-08-29: Added training and evaluation steps.
 #     - 2025-09-04: Added scheduler support.
+#     - 2026-03-05: Added support for returning logits for evaluation.
 
 from typing import Optional
 
@@ -107,13 +108,14 @@ class PyTorchModel(nn.Module):
         return loss.item()
     
 
-    def eval_step(
+    def test_step(
             self,
             X: torch.Tensor, 
-            y: torch.Tensor
-        ) -> tuple[torch.Tensor, float]:
+            y: torch.Tensor,
+            return_outputs: bool = False,
+        ) -> tuple[Optional[torch.Tensor], float, torch.Tensor]:
         """
-        Evaluate the model on the given input and target tensors.
+        Perform a single test step.
 
         Parameters
         ----------
@@ -121,14 +123,16 @@ class PyTorchModel(nn.Module):
             The input tensor.
         y : torch.Tensor
             The target tensor.
+        return_outputs : bool, optional
+            Whether to return the model outputs, by default False.
 
         Returns
         -------
-        tuple[torch.Tensor, float]
-            The predicted labels and the loss value.
+        tuple[Optional[torch.Tensor], float, torch.Tensor]
+            The model outputs (None if return_outputs is False), the loss value, and the predicted labels.
         """
         if not self.configured:
-            raise RuntimeError("Model is not configured for evaluation.")
+            raise RuntimeError("Model is not configured for inference.")
 
         X = X.to(self.device)
         y = y.to(self.device)
@@ -142,7 +146,12 @@ class PyTorchModel(nn.Module):
 
         self.metric.update(outputs, y)
 
-        return preds, loss.item()
+        if return_outputs:
+            outputs = outputs.detach().cpu()
+        else:
+            outputs = None
+        
+        return outputs, loss.item(), preds
 
 
     def compute_loss(
