@@ -362,12 +362,9 @@ def train_classification_model(
                 early_stopper.step(model, epoch_loss_val)
                 if early_stopper.early_stop:
                     if verbose:
-                        print(f"\nEarly stopping triggered at epoch {epoch}", end="")
+                        print(f"\nEarly stopping triggered at epoch {epoch}")
                     early_stopper.restore(model)
                     epoch = epochs  # Exit outer loop
-        
-        if verbose:
-            print()
 
         model.on_epoch_end()
     
