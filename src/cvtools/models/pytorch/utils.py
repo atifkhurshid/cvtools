@@ -4,8 +4,8 @@ Utility functions for PyTorch models.
 
 # Author: Atif Khurshid
 # Created: 2025-06-22
-# Modified: 2026-03-05
-# Version: 2.1
+# Modified: 2026-03-06
+# Version: 2.2
 # Changelog:
 #     - 2025-08-01: Added type hints and documentation.
 #     - 2025-08-01: Updated training loop to include epochs.
@@ -19,9 +19,10 @@ Utility functions for PyTorch models.
 #     - 2026-03-02: Allowed validation on entire dataset.
 #     - 2026-03-04: Added early stopping functionality to training loop.
 #     - 2026-03-05: Updated test_classification_model to optionally return logits for evaluation.
+#     - 2026-03-06: Added run_trials function for running multiple trials and computing summary statistics.
 
 from pathlib import Path
-from typing import Union, Optional
+from typing import Callable, Union, Optional
 
 import wandb
 import torch
@@ -29,6 +30,7 @@ import numpy as np
 import torch.nn as nn
 from tqdm import tqdm
 from torch.utils.data import Dataset, DataLoader
+from sklearn.metrics import classification_report
 
 from .base import PyTorchModel
 from ...utils.pytorch import InfiniteDataLoader
@@ -235,6 +237,7 @@ def train_classification_model(
         restore_best_weights: bool = True,
         run: Optional[wandb.Run] = None,
         log_interval: int = 10,
+        verbose: bool = True,
     ):
     """
     Train a PyTorch classification model using the provided dataloader.
@@ -257,11 +260,21 @@ def train_classification_model(
         - "dataset": Evaluate on the entire validation dataset at each logging interval.
         - "batch": Evaluate on a single batch from the validation dataset at each logging interval.
         Default is "batch".
+    early_stopping : bool
+        Whether to use early stopping based on validation loss. Default is False.
+    patience : int
+        Number of epochs with no improvement after which training will be stopped if early stopping is enabled. Default is 5.
+    min_delta : float
+        Minimum change in the monitored quantity to qualify as an improvement for early stopping. Default is 1e-4.
+    restore_best_weights : bool
+        Whether to restore the model weights from the epoch with the best validation loss after training. Default
     run : wandb.Run | None
         Weights & Biases run for logging. If None, no logging is performed.
         Default is None.
     log_interval : int
         Interval (in steps) at which to log training progress. Default is 10.
+    verbose : bool
+        Whether to print training progress to the console. Default is True.
 
     Examples
     ---------
@@ -293,8 +306,12 @@ def train_classification_model(
         epoch_metric_train = []
         epoch_metric_val = []
 
-        for i, (X, y) in tqdm(enumerate(train_dataloader),
-                              total=len(train_dataloader), desc=f"Epoch {epoch}/{epochs}"):
+        for i, (X, y) in tqdm(
+                enumerate(train_dataloader),
+                total=len(train_dataloader),
+                desc=f"Epoch {epoch}/{epochs}",
+                disable = not verbose,
+            ):
             batch_loss_train = model.train_step(X, y)
             batch_metric_train = model.compute_metric()
             epoch_loss_train.append(batch_loss_train)
@@ -303,11 +320,13 @@ def train_classification_model(
             if i % log_interval == 0:
 
                 if val_dataloader is not None:
+
                     if val_strategy == "dataset":
                         batch_loss_val, batch_metric_val, _, _, _ = test_classification_model(
                             model, val_dataloader, return_outputs=False, pbar=False)
                         epoch_loss_val = batch_loss_val
                         epoch_metric_val = batch_metric_val
+
                     elif val_strategy == "batch":
                         X, y = next(val_dataloader)
                         batch_loss_val, batch_metric_val, _, _, _ = test_classification_model(
@@ -328,20 +347,27 @@ def train_classification_model(
         epoch_loss_train = np.mean(epoch_loss_train)
         epoch_metric_train = np.mean(epoch_metric_train)
 
-        print(f"Epoch {epoch}/{epochs}, ", end="")
-        print(f"Train Loss: {epoch_loss_train:.4f}, Train Metric: {epoch_metric_train:.4f}, ", end="")
+        if verbose:
+            print(f"Epoch {epoch}/{epochs}, ", end="")
+            print(f"Train Loss: {epoch_loss_train:.4f}, Train Metric: {epoch_metric_train:.4f}, ", end="")
+        
         if val_dataloader is not None:
             epoch_loss_val = np.mean(epoch_loss_val)
             epoch_metric_val = np.mean(epoch_metric_val)
-            print(f"Val Loss: {epoch_loss_val:.4f}, Val Metric: {epoch_metric_val:.4f}", end="")
+
+            if verbose:
+                print(f"Val Loss: {epoch_loss_val:.4f}, Val Metric: {epoch_metric_val:.4f}", end="")
 
             if early_stopping:
                 early_stopper.step(model, epoch_loss_val)
                 if early_stopper.early_stop:
-                    print(f"\nEarly stopping triggered at epoch {epoch}")
+                    if verbose:
+                        print(f"\nEarly stopping triggered at epoch {epoch}", end="")
                     early_stopper.restore(model)
                     epoch = epochs  # Exit outer loop
-        print()
+        
+        if verbose:
+            print()
 
         model.on_epoch_end()
     
@@ -349,3 +375,115 @@ def train_classification_model(
         early_stopper.restore(model)
 
     model.eval()
+
+
+def run_trials(
+        n_trials: int,
+        model_fn: Callable,
+        init_fn: Callable,
+        train_args: dict,
+        test_args: dict,
+        class_names: list[str],
+        target_metric: str = "f1-score",
+        digits: int = 4,
+        zero_division: int = 0,
+        **kwargs
+    ) -> dict:
+    """
+    Run multiple trials of training and testing a classification model,
+    and compute summary statistics.
+
+    Parameters
+    ----------
+    n_trials : int
+        The number of trials to run.
+    model_fn : Callable
+        A function that defines and returns a new instance of the model architecture.
+    init_fn : Callable
+        A function that takes a model instance and initializes it.
+    train_args : dict
+        A dictionary of arguments to pass to the training function.
+    test_args : dict
+        A dictionary of arguments to pass to the testing function.
+    class_names : list[str]
+        A list of class names for the classification report.
+    target_metric : str, optional
+        The metric to use for selecting the best model, by default "f1-score".
+    digits : int, optional
+        The number of digits to display in the classification report, by default 4.
+    zero_division : int, optional
+        The value to use for zero division in the classification report, by default 0.
+    **kwargs
+        Additional keyword arguments to pass to the classification report function.
+    
+    Returns
+    -------
+    dict
+        A dictionary containing the results of the trials, including:
+        - "accuracy": A list of accuracy scores for each trial.
+        - "precision": A list of precision scores for each trial.
+        - "recall": A list of recall scores for each trial.
+        - "f1-score": A list of f1-scores for each trial.
+        - "y_true": The true labels from the last trial.
+        - "best_pred": The predicted labels from the best trial.
+        - "best_outputs": The model outputs from the best trial.
+        - "summary": A dictionary containing the mean and standard deviation
+          of each metric across trials.
+    """
+
+    results = {
+        "accuracy": [],
+        "precision": [],
+        "recall": [],
+        "f1-score": [],
+        "y_true": None,
+        "best_pred": None,
+        "best_outputs": None,
+        "summary": {}
+    }
+
+    best_metric = -float("inf")
+
+    for trial in tqdm(range(n_trials), desc="Running trials"):
+
+        model = model_fn()
+        init_fn(model)
+
+        train_classification_model(model, **train_args)
+
+        _, _, outputs, y_pred, y_true = test_classification_model(
+            model, **test_args
+        )
+
+        report = classification_report(
+            y_true, y_pred, target_names=class_names, digits=digits,
+            zero_division=zero_division, output_dict=True, **kwargs)
+        
+        results["accuracy"].append(round(report["accuracy"] * 100, 4))
+        results["precision"].append(round(report["weighted avg"]["precision"] * 100, 4))
+        results["recall"].append(round(report["weighted avg"]["recall"] * 100, 4))
+        results["f1-score"].append(round(report["weighted avg"]["f1-score"] * 100, 4))
+
+        if results[target_metric][-1] > best_metric:
+            best_metric = results[target_metric][-1]
+            results["best_pred"] = y_pred
+            results["best_outputs"] = outputs
+
+    results["y_true"] = y_true
+
+    print("\nSummary of results across trials:")
+
+    for metric in ["accuracy", "precision", "recall", "f1-score"]:
+
+        results["summary"][f"{metric}"] = {
+            "mean": float(round(np.mean(results[metric]), 4)),
+            "std": float(round(np.std(results[metric]), 4))
+        }
+
+        print("\t{}: {:.2f} ± {:.2f}".format(
+            metric.capitalize(),
+            results["summary"][f"{metric}"]["mean"],
+            results["summary"][f"{metric}"]["std"])
+        )
+
+    return results
