@@ -4,10 +4,12 @@ Metrics for evaluating classification models.
 
 # Author: Atif Khurshid
 # Created: 2026-03-05
-# Modified: None
-# Version: 1.0
+# Modified: 2026-03-12
+# Version: 1.1
 # Changelog:
 #     - 2026-03-05: Added ROC curve and AUC score computation.
+#     - 2026-03-12: Added n_interp_points parameter to compute_roc function.
+#     - 2026-03-12: Added interpolation of roc curve for micro weighted average.
 
 from typing import Optional
 
@@ -22,6 +24,7 @@ def compute_roc(
         outputs: np.ndarray,
         mode: str = "binary",
         classes: Optional[list] = None,
+        n_interp_points: int = 250,
     ) -> tuple:
     """
     Compute ROC curve parameters and AUC score for binary or multiclass classification.
@@ -36,6 +39,8 @@ def compute_roc(
         Type of classification task. Must be "binary" or "multiclass".
     classes : list, optional (default=list)
         List of class labels for multiclass classification. Required if mode is "multiclass".
+    n_interp_points : int, optional (default=250)
+        Number of points to interpolate the ROC curve at.
 
     Returns
     -------
@@ -70,7 +75,7 @@ def compute_roc(
 
         fpr, tpr, thresholds, auc_score = {}, {}, {}, {}
 
-        fpr["macro"] = fpr["weighted"] = np.linspace(0, 1, num=1000)
+        fpr["macro"] = fpr["weighted"] = np.linspace(0, 1, num=n_interp_points)
         tpr["macro"] = np.zeros_like(fpr["macro"])
         tpr["weighted"] = np.zeros_like(fpr["weighted"])
 
@@ -88,6 +93,9 @@ def compute_roc(
             labels_binarized.ravel(),
             probs.ravel(),
         )
+        tpr["micro"] = np.interp(fpr["macro"], fpr["micro"], tpr["micro"])
+        thresholds["micro"] = np.interp(fpr["macro"], fpr["micro"], thresholds["micro"])
+        fpr["micro"] = fpr["macro"]
 
         auc_score["macro"] = roc_auc_score(labels, probs, average="macro", multi_class="ovr")
         auc_score["micro"] = roc_auc_score(labels, probs, average="micro", multi_class="ovr")
