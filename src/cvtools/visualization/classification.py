@@ -4,11 +4,12 @@ Visualizations for classification.
 
 # Author: Atif Khurshid
 # Created: 2026-03-05
-# Modified: None
-# Version: 1.0
+# Modified: 2026-03-13
+# Version: 1.1
 # Changelog:
 #     - 2026-03-05: Added ROC curve plotting functions.
 #     - 2026-03-05: Added confusion matrix display function.
+#     - 2026-03-13: Added option to plot diagonal line in ROC curve functions.
 
 from typing import Union, Optional
 
@@ -47,6 +48,7 @@ def plot_roc_curve(
         label: str = "ROC Curve",
         color: str = "tab-blue",
         linestyle: str = "-",
+        diagonal: bool = False,
         figsize: tuple = (7, 6),
         facecolor: str = "none",
         save_path: Union[str, None] = None,
@@ -70,6 +72,8 @@ def plot_roc_curve(
         Color of the ROC curve. Default is "tab-blue".
     linestyle : str, optional
         Line style for the ROC curve. Default is "-".
+    diagonal : bool, optional
+        Whether to plot the diagonal line for reference. Default is False.
     figsize : tuple, optional
         Size of the figure. Default is (7, 6).
     facecolor : str, optional
@@ -84,7 +88,8 @@ def plot_roc_curve(
     fig, ax = plt.subplots(facecolor=facecolor, figsize=figsize)
 
     # Plot the diagonal line for reference
-    ax.plot([0, 1], [0, 1], color="gray", linestyle="--")
+    if diagonal:
+        ax.plot([0, 1], [0, 1], color="gray", linestyle="--")
 
     ax.plot(fpr, tpr, label=f"{label} [{auc_score:.3f}]",
             color=color, linestyle=linestyle)
@@ -108,6 +113,7 @@ def plot_roc_curves(
         labels: list[str],
         colors: Union[list[str], str] = "auto",
         linestyles: Union[list[str], str] = "-",
+        diagonal: bool = False,
         figsize: tuple = (7, 6),
         facecolor: str = "none",
         save_path: Union[str, None] = None,
@@ -133,6 +139,8 @@ def plot_roc_curves(
     linestyles : list[str] or str, optional
         List of line styles for each plot or a single line style for all plots.
         Default is "-".
+    diagonal : bool, optional
+        Whether to plot the diagonal line for reference. Default is False.
     figsize : tuple, optional
         Size of the figure. Default is (7, 6).
     facecolor : str, optional
@@ -147,7 +155,8 @@ def plot_roc_curves(
     fig, ax = plt.subplots(facecolor=facecolor, figsize=figsize)
 
     # Plot the diagonal line for reference
-    ax.plot([0, 1], [0, 1], color="gray", linestyle="--")
+    if diagonal:
+        ax.plot([0, 1], [0, 1], color="gray", linestyle="--")
 
     if colors == "auto":
         colors = list(plt.get_cmap("tab10").colors)
