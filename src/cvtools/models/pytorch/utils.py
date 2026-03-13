@@ -4,8 +4,8 @@ Utility functions for PyTorch models.
 
 # Author: Atif Khurshid
 # Created: 2025-06-22
-# Modified: 2026-03-06
-# Version: 2.2
+# Modified: 2026-03-13
+# Version: 2.3
 # Changelog:
 #     - 2025-08-01: Added type hints and documentation.
 #     - 2025-08-01: Updated training loop to include epochs.
@@ -20,6 +20,7 @@ Utility functions for PyTorch models.
 #     - 2026-03-04: Added early stopping functionality to training loop.
 #     - 2026-03-05: Updated test_classification_model to optionally return logits for evaluation.
 #     - 2026-03-06: Added run_trials function for running multiple trials and computing summary statistics.
+#     - 2026-03-13: Added error handling to training loop and ensured wandb run is finished properly.
 
 from pathlib import Path
 from typing import Callable, Union, Optional
@@ -285,93 +286,98 @@ def train_classification_model(
     ... ])
     >>> train_classification_model(model, train_dataloader, val_dataloader=val_dataloader)
     """
-    if val_dataloader is not None:
-        if val_strategy == "batch":
-            val_dataloader = InfiniteDataLoader(val_dataloader)
-
-        if early_stopping:
-            early_stopper = EarlyStopping(
-                patience = patience,
-                min_delta = min_delta,
-                restore_best_weights = restore_best_weights
-            )
-
-    epoch = 0
-    while epoch < epochs:
-        epoch += 1
-        model.train()
-
-        epoch_loss_train = []
-        epoch_loss_val = []
-        epoch_metric_train = []
-        epoch_metric_val = []
-
-        for i, (X, y) in tqdm(
-                enumerate(train_dataloader),
-                total=len(train_dataloader),
-                desc=f"Epoch {epoch}/{epochs}",
-                disable = not verbose,
-            ):
-            batch_loss_train = model.train_step(X, y)
-            batch_metric_train = model.compute_metric()
-            epoch_loss_train.append(batch_loss_train)
-            epoch_metric_train.append(batch_metric_train)
-
-            if i % log_interval == 0:
-
-                if val_dataloader is not None:
-
-                    if val_strategy == "dataset":
-                        batch_loss_val, batch_metric_val, _, _, _ = test_classification_model(
-                            model, val_dataloader, return_outputs=False, pbar=False)
-                        epoch_loss_val = batch_loss_val
-                        epoch_metric_val = batch_metric_val
-
-                    elif val_strategy == "batch":
-                        X, y = next(val_dataloader)
-                        batch_loss_val, batch_metric_val, _, _, _ = test_classification_model(
-                            model, (X, y), return_outputs=False, pbar=False)
-                        epoch_loss_val.append(batch_loss_val)
-                        epoch_metric_val.append(batch_metric_val)
-
-                if run is not None:
-                    run.log({
-                        "train/loss": batch_loss_train,
-                        "train/metric": batch_metric_train,
-                        "valid/loss": batch_loss_val if val_dataloader is not None else None,
-                        "valid/metric": batch_metric_val if val_dataloader is not None else None,
-                        "learning_rate": model.get_learning_rate(),
-                        "samples_seen": model.training_samples_seen,
-                    })
-
-        epoch_loss_train = np.mean(epoch_loss_train)
-        epoch_metric_train = np.mean(epoch_metric_train)
-
-        if verbose:
-            print(f"Epoch {epoch}/{epochs}, ", end="")
-            print(f"Train Loss: {epoch_loss_train:.4f}, Train Metric: {epoch_metric_train:.4f}, ", end="")
-        
+    try:
         if val_dataloader is not None:
-            epoch_loss_val = np.mean(epoch_loss_val)
-            epoch_metric_val = np.mean(epoch_metric_val)
-
-            if verbose:
-                print(f"Val Loss: {epoch_loss_val:.4f}, Val Metric: {epoch_metric_val:.4f}", end="")
+            if val_strategy == "batch":
+                val_dataloader = InfiniteDataLoader(val_dataloader)
 
             if early_stopping:
-                early_stopper.step(model, epoch_loss_val)
-                if early_stopper.early_stop:
-                    if verbose:
-                        print(f"\nEarly stopping triggered at epoch {epoch}")
-                    early_stopper.restore(model)
-                    epoch = epochs  # Exit outer loop
+                early_stopper = EarlyStopping(
+                    patience = patience,
+                    min_delta = min_delta,
+                    restore_best_weights = restore_best_weights
+                )
 
-        model.on_epoch_end()
+        epoch = 0
+        while epoch < epochs:
+            epoch += 1
+            model.train()
+
+            epoch_loss_train = []
+            epoch_loss_val = []
+            epoch_metric_train = []
+            epoch_metric_val = []
+
+            for i, (X, y) in tqdm(
+                    enumerate(train_dataloader),
+                    total=len(train_dataloader),
+                    desc=f"Epoch {epoch}/{epochs}",
+                    disable = not verbose,
+                ):
+                batch_loss_train = model.train_step(X, y)
+                batch_metric_train = model.compute_metric()
+                epoch_loss_train.append(batch_loss_train)
+                epoch_metric_train.append(batch_metric_train)
+
+                if i % log_interval == 0:
+
+                    if val_dataloader is not None:
+
+                        if val_strategy == "dataset":
+                            batch_loss_val, batch_metric_val, _, _, _ = test_classification_model(
+                                model, val_dataloader, return_outputs=False, pbar=False)
+                            epoch_loss_val = batch_loss_val
+                            epoch_metric_val = batch_metric_val
+
+                        elif val_strategy == "batch":
+                            X, y = next(val_dataloader)
+                            batch_loss_val, batch_metric_val, _, _, _ = test_classification_model(
+                                model, (X, y), return_outputs=False, pbar=False)
+                            epoch_loss_val.append(batch_loss_val)
+                            epoch_metric_val.append(batch_metric_val)
+
+                    if run is not None:
+                        run.log({
+                            "train/loss": batch_loss_train,
+                            "train/metric": batch_metric_train,
+                            "valid/loss": batch_loss_val if val_dataloader is not None else None,
+                            "valid/metric": batch_metric_val if val_dataloader is not None else None,
+                            "learning_rate": model.get_learning_rate(),
+                            "samples_seen": model.training_samples_seen,
+                        })
+
+            epoch_loss_train = np.mean(epoch_loss_train)
+            epoch_metric_train = np.mean(epoch_metric_train)
+
+            if verbose:
+                print(f"Epoch {epoch}/{epochs}, ", end="")
+                print(f"Train Loss: {epoch_loss_train:.4f}, Train Metric: {epoch_metric_train:.4f}, ", end="")
+            
+            if val_dataloader is not None:
+                epoch_loss_val = np.mean(epoch_loss_val)
+                epoch_metric_val = np.mean(epoch_metric_val)
+
+                if verbose:
+                    print(f"Val Loss: {epoch_loss_val:.4f}, Val Metric: {epoch_metric_val:.4f}", end="")
+
+                if early_stopping:
+                    early_stopper.step(model, epoch_loss_val)
+                    if early_stopper.early_stop:
+                        if verbose:
+                            print(f"\nEarly stopping triggered at epoch {epoch}")
+                        early_stopper.restore(model)
+                        epoch = epochs  # Exit outer loop
+
+            model.on_epoch_end()
+        
+        if early_stopping and not early_stopper.early_stop:
+            early_stopper.restore(model)
+
+        model.eval()
     
-    if early_stopping and not early_stopper.early_stop:
-        early_stopper.restore(model)
-
-    model.eval()
+    except Exception as e:
+        wandb.finish()
+        raise e
 
 
 def run_trials(
