@@ -4,8 +4,8 @@ Utility functions for PyTorch models.
 
 # Author: Atif Khurshid
 # Created: 2025-06-22
-# Modified: 2026-03-13
-# Version: 2.3
+# Modified: 2026-03-16
+# Version: 2.4
 # Changelog:
 #     - 2025-08-01: Added type hints and documentation.
 #     - 2025-08-01: Updated training loop to include epochs.
@@ -21,6 +21,7 @@ Utility functions for PyTorch models.
 #     - 2026-03-05: Updated test_classification_model to optionally return logits for evaluation.
 #     - 2026-03-06: Added run_trials function for running multiple trials and computing summary statistics.
 #     - 2026-03-13: Added error handling to training loop and ensured wandb run is finished properly.
+#     - 2026-03-16: Added support for a pretraining loop in run_trials.
 
 from pathlib import Path
 from typing import Callable, Union, Optional
@@ -386,7 +387,11 @@ def run_trials(
         init_fn: Callable,
         train_args: dict,
         test_args: dict,
-        class_names: list[str],
+        pretrain: bool = False,
+        pretrain_fn: Optional[Callable] = None,
+        pretrain_args: Optional[dict] = None,
+        posttrain_fn: Optional[Callable] = None,
+        class_names: Optional[list[str]] = None,
         target_metric: str = "f1-score",
         digits: int = 4,
         zero_division: int = 0,
@@ -408,7 +413,15 @@ def run_trials(
         A dictionary of arguments to pass to the training function.
     test_args : dict
         A dictionary of arguments to pass to the testing function.
-    class_names : list[str]
+    pretrain : bool, optional
+        Whether to perform pretraining before the main training loop, by default False.
+    pretrain_fn : Callable, optional
+        A function that takes a model instance and modifies it for pretraining, by default None.
+    pretrain_args : dict, optional
+        A dictionary of arguments to pass to the training function during pretraining, by default None.
+    posttrain_fn : Callable, optional
+        A function that takes a pretrained model instance and modifies it for the main training loop, by default None.
+    class_names : list[str], optional
         A list of class names for the classification report.
     target_metric : str, optional
         The metric to use for selecting the best model, by default "f1-score".
@@ -450,7 +463,12 @@ def run_trials(
     for trial in tqdm(range(n_trials), desc="Running trials"):
 
         model = model_fn()
-        init_fn(model)
+        model = init_fn(model)
+
+        if pretrain:
+            model = pretrain_fn(model)
+            train_classification_model(model, **pretrain_args)
+            model = posttrain_fn(model)
 
         train_classification_model(model, **train_args)
 
