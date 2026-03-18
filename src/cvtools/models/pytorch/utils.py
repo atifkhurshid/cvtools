@@ -4,8 +4,8 @@ Utility functions for PyTorch models.
 
 # Author: Atif Khurshid
 # Created: 2025-06-22
-# Modified: 2026-03-16
-# Version: 2.4
+# Modified: 2026-03-18
+# Version: 2.5
 # Changelog:
 #     - 2025-08-01: Added type hints and documentation.
 #     - 2025-08-01: Updated training loop to include epochs.
@@ -22,6 +22,7 @@ Utility functions for PyTorch models.
 #     - 2026-03-06: Added run_trials function for running multiple trials and computing summary statistics.
 #     - 2026-03-13: Added error handling to training loop and ensured wandb run is finished properly.
 #     - 2026-03-16: Added support for a pretraining loop in run_trials.
+#     - 2026-03-18: Added support for ROC curve computation in run_trials.
 
 from pathlib import Path
 from typing import Callable, Union, Optional
@@ -37,6 +38,7 @@ from sklearn.metrics import classification_report
 from .base import PyTorchModel
 from ...utils.pytorch import InfiniteDataLoader
 from ...utils.pytorch import EarlyStopping
+from ...evaluation.metrics import compute_roc
 
 
 def extract_features(
@@ -452,6 +454,7 @@ def run_trials(
         "precision": [],
         "recall": [],
         "f1-score": [],
+        "roc": [],
         "y_true": None,
         "best_pred": None,
         "best_outputs": None,
@@ -484,6 +487,18 @@ def run_trials(
         results["precision"].append(round(report["weighted avg"]["precision"] * 100, 4))
         results["recall"].append(round(report["weighted avg"]["recall"] * 100, 4))
         results["f1-score"].append(round(report["weighted avg"]["f1-score"] * 100, 4))
+
+        classes = np.unique(y_true)
+        roc_mode = "binary" if len(classes) == 2 else "multiclass"
+        fpr, tpr, thresholds, auc_scores = compute_roc(
+            y_true, outputs, mode = roc_mode, classes = np.arange(len(classes)),
+        )
+        results["roc"].append({
+            "fpr": fpr,
+            "tpr": tpr,
+            "thresholds": thresholds,
+            "auc_scores": auc_scores,
+        })
 
         if results[target_metric][-1] > best_metric:
             best_metric = results[target_metric][-1]
