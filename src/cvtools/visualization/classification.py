@@ -4,18 +4,21 @@ Visualizations for classification.
 
 # Author: Atif Khurshid
 # Created: 2026-03-05
-# Modified: 2026-03-13
-# Version: 1.1
+# Modified: 2026-03-19
+# Version: 1.2
 # Changelog:
 #     - 2026-03-05: Added ROC curve plotting functions.
 #     - 2026-03-05: Added confusion matrix display function.
 #     - 2026-03-13: Added option to plot diagonal line in ROC curve functions.
+#     - 2026-03-19: Added function to plot mean ROC curve with confidence intervals.
 
 from typing import Union, Optional
 
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+
+from scipy.stats import norm
 
 from .utils import plt_save_and_show
 
@@ -178,5 +181,110 @@ def plot_roc_curves(
     ax.legend(loc="lower right", frameon=False)
 
     ax.patch.set_facecolor(facecolor)
+
+    plt_save_and_show(plt, save_path, save_dpi, save_format, transparent=True)
+
+
+def plot_roc_curves_with_confidence_intervals(
+        fprs_list: list[list],
+        tprs_list: list[list],
+        aucs_list: list[float],
+        labels: list[str],
+        colors: Union[list[str], str] = "auto",
+        confidence: float = 0.95,
+        n_points: int = 250,
+        title: str = "ROC Curves with Confidence Intervals",
+        figsize: tuple = (10, 8),
+        facecolor: str = "none",
+        save_path: Union[str, None] = None,
+        save_dpi: int = 600,
+        save_format: str = 'png',
+    ):
+    """
+    Plot mean ROC curves with confidence intervals for multiple experiments,
+    each with multiple runs.
+
+    Parameters
+    ----------
+    fprs_list : list[list]
+        List of lists of false positive rates for each trial.
+    tprs_list : list[list]
+        List of lists of true positive rates for each trial.
+    aucs_list : list[float]
+        List of AUC scores for each trial.
+    labels : list[str]
+        List of labels for each plot, in the same order as fprs_list and tprs_list.
+    colors : list[str] or str, optional
+        List of colors for each plot or a single color for all plots. Default is "auto",
+        which uses the tab10 color cycle.
+    confidence : float, optional
+        Confidence level for the confidence interval. Default is 0.95.
+    n_points : int, optional
+        Number of points to interpolate the mean ROC curve. Default is 250.
+    title : str, optional
+        Title of the plot. Default is "ROC Curve with Confidence Interval".
+    figsize : tuple, optional
+        Size of the figure. Default is (10, 8).
+    facecolor : str, optional
+        Background color of the plot. Default is "none".
+    save_path : str or None, optional
+        Path to save the figure, if None the figure is not saved. Default is None.
+    save_dpi : int, optional
+        Dots per inch for saving the figure. Default is 600.
+    save_format : str, optional
+        Format to save the figure. Default is 'png'.
+    """
+
+    fig, ax = plt.subplots(figsize=figsize)
+
+    mean_fpr = np.linspace(0, 1, n_points)
+
+    if colors == "auto":
+        colors = list(plt.get_cmap("tab10").colors)
+        if len(labels) > len(colors):
+            colors = colors * (len(labels) // len(colors) + 1)
+
+    for i, (fprs, tprs, aucs, label) in enumerate(zip(
+        fprs_list, tprs_list, aucs_list, labels)):
+
+        tprs_interp = []
+
+        for fpr, tpr in zip(fprs, tprs):
+
+            ax.plot(fpr, tpr, alpha=0.4, color=colors[i], lw=1)
+
+            tpr_interp = np.interp(mean_fpr, fpr, tpr)
+            tpr_interp[0] = 0.0
+            tprs_interp.append(tpr_interp)
+
+        tprs = np.array(tprs_interp)
+        
+        mean_tpr = np.mean(tprs, axis=0)
+        mean_tpr[-1] = 1.0
+        std_tpr = np.std(tprs, axis=0)
+        mean_auc = np.mean(aucs)
+        std_auc = np.std(aucs)
+
+        ax.plot(mean_fpr, mean_tpr, color=colors[i], lw=2,
+                label=f"{label} (AUC = {mean_auc:.3f} ± {std_auc:.2f})")
+
+        n_trials = len(tprs)
+        z = norm.ppf((1 + confidence) / 2)
+        tprs_upper = np.clip(mean_tpr + z * (std_tpr / np.sqrt(n_trials)), 0, 1)
+        tprs_lower = np.clip(mean_tpr - z * (std_tpr / np.sqrt(n_trials)), 0, 1)
+
+        ax.fill_between(mean_fpr, tprs_lower, tprs_upper, color=colors[i], alpha=0.2)
+
+    ax.set(
+        xlabel="False Positive Rate",
+        ylabel="True Positive Rate",
+        xlim=[0, 1],
+        ylim=[0, 1],
+        title=title
+    )
+    ax.legend(loc="lower right")
+    ax.patch.set_facecolor(facecolor)
+
+    plt.tight_layout()
 
     plt_save_and_show(plt, save_path, save_dpi, save_format, transparent=True)
