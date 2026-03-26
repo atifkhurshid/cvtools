@@ -12,12 +12,14 @@ Generic dataloader for image classification tasks.
 #     - 2026-03-03: Refactored code to use new image processing functions.
 #     - 2026-03-26: Refactored code to match updated base class.
 
+import os
 from pathlib import Path
 from typing import Optional, Union
 
 import numpy as np
 
 from .._base import _ClassificationBase
+from ....image import IMAGE_EXTENSIONS
 
 
 class ClassificationDataset(_ClassificationBase):
@@ -25,7 +27,7 @@ class ClassificationDataset(_ClassificationBase):
     def __init__(
             self,
             root_dir: str,
-            exts: list[str] = ['.jpg', '.png'],
+            exts: list[str] = IMAGE_EXTENSIONS,
             image_mode: Union[str, int] = 'RGB',
             hdf5_mode: bool = False,
             image_scale: Optional[float] = None,
@@ -44,7 +46,7 @@ class ClassificationDataset(_ClassificationBase):
         root_dir : str
             Path to the root directory containing class subdirectories.
         exts : list[str], optional
-            List of file extensions to consider as valid images. Default is ['.jpg', '.png'].
+            List of file extensions to consider as valid images. Default is IMAGE_EXTENSIONS.
         image_mode : str | int, optional
             Mode to read images. Can be 'RGB', 'GRAY', or a cv2.IMREAD_... flag. Default is 'RGB'.
         hdf5_mode : bool, optional
@@ -93,9 +95,22 @@ class ClassificationDataset(_ClassificationBase):
             interpolation=interpolation
         )
 
-        self.root_dir = Path(self.root_dir)
+        if hdf5_mode:
 
-        if not hdf5_mode:
+            self.root_dir = ""
+
+            self.classes = list(self.images_file.keys())
+
+            self.labels = []
+            self.filenames = []
+            for i, c in enumerate(self.classes):
+                filenames = list(self.images_file[c].keys())
+                self.labels.extend([c] * len(filenames))
+                self.filenames.extend(filenames)
+
+        else:
+
+            self.root_dir = Path(self.root_dir)
 
             self.classes = [x.name for x in self.root_dir.iterdir() if not x.is_file()]
 
@@ -107,9 +122,6 @@ class ClassificationDataset(_ClassificationBase):
                 labels = [c] * len(filenames)
                 self.filenames.extend(filenames)
                 self.labels.extend(labels)
-        else:
-
-            pass
 
         self.ids = np.arange(len(self.filenames))
 
@@ -133,6 +145,6 @@ class ClassificationDataset(_ClassificationBase):
         """
         id = self.ids[index]
         label = self.labels[id]
-        image_path = str(self.root_dir / label / self.filenames[id])
+        image_path = os.path.join(self.root_dir, label, self.filenames[id])
 
         return image_path, label
