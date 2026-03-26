@@ -5,17 +5,15 @@ Link: https://people.csail.mit.edu/torralba/code/spatialenvelope/
 
 # Author: Atif Khurshid
 # Created: 2025-09-03
-# Modified: 2026-03-03
-# Version: 1.1
+# Modified: 2026-03-26
+# Version: 1.2
 # Changelog:
 #     - 2026-03-03: Refactored code to use new image processing functions.
+#     - 2026-03-26: Refactored code to match updated base class.
 
 import os
 from typing import Optional
 
-import numpy as np
-
-from ....image import imread
 from .._base import _ClassificationBase
 
 
@@ -23,6 +21,7 @@ class Scenes8Dataset(_ClassificationBase):
     def __init__(
             self,
             root_dir: str,
+            image_mode: str = 'RGB',
             image_scale: Optional[float] = None,
             image_size: Optional[tuple[int, int]] = None,
             preserve_aspect_ratio: bool = True,
@@ -40,6 +39,8 @@ class Scenes8Dataset(_ClassificationBase):
         ----------
         root_dir : str
             Path to the root directory of the dataset.
+        image_mode : str, optional
+            Mode to read images. Can be 'RGB', 'GRAY', or a cv2.IMREAD_... flag. Default is 'RGB'.
         image_scale : float, optional
             Scale factor to resize images. Default is None (no scaling).
         image_size : tuple, optional
@@ -69,13 +70,13 @@ class Scenes8Dataset(_ClassificationBase):
         ...     pass
         """
         super().__init__(
+            root_dir=root_dir,
+            image_mode=image_mode,
             image_scale=image_scale,
             image_size=image_size,
             preserve_aspect_ratio=preserve_aspect_ratio,
             interpolation=interpolation
         )
-
-        self.root_dir = root_dir
 
         self.images_dir = os.path.join(self.root_dir, 'images')
         if not os.path.exists(self.images_dir):
@@ -88,25 +89,22 @@ class Scenes8Dataset(_ClassificationBase):
         self.__initialize__()
 
 
-    def __getitem__(self, idx: int) -> tuple[np.ndarray, int]:
+    def _get_image_path_and_label(self, index: int) -> tuple[str, str]:
         """
-        Returns the image and label at the specified index.
-        The image is read in RGB format and resized to the specified image size.
+        Get the image path and label for a given index.
 
         Parameters
         ----------
-        idx : int
-            Index of the sample to retrieve.
+        index : int
+            Index of the item to retrieve.
 
         Returns
         -------
-        tuple[np.ndarray, int]
-            A tuple containing the image as a numpy array and the label index.
+        tuple[str, str]
+            A tuple containing the image path and its corresponding label.
+
         """
-        img_path = os.path.join(self.images_dir, self.filenames[idx])
-        image = imread(img_path, mode="RGB")
-        image = self._preprocess_image(image)
+        image_path = os.path.join(self.images_dir, self.filenames[index])
+        label = self.labels[index]
 
-        label = self.class_name_to_index(self.labels[idx])
-
-        return image, label
+        return image_path, label

@@ -5,19 +5,16 @@ Link: https://ieeexplore.ieee.org/document/1641019
 
 # Author: Atif Khurshid
 # Created: 2022-09-05
-# Modified: 2026-03-03
-# Version: 1.2
+# Modified: 2026-03-26
+# Version: 1.3
 # Changelog:
 #     - 2026:02-10: Used custom imread function.
 #     - 2026-03-03: Refactored code to use new image processing functions.
+#     - 2026-03-26: Refactored code to match updated base class.
 
 from pathlib import Path
 from typing import Optional
 
-import numpy as np
-from PIL import Image
-
-from ....image import imread
 from .._base import _ClassificationBase
 
 
@@ -26,6 +23,7 @@ class Scenes15Dataset(_ClassificationBase):
     def __init__(
             self,
             root_dir: str,
+            image_mode: str = 'RGB',
             image_scale: Optional[float] = None,
             image_size: Optional[tuple[int, int]] = None,
             preserve_aspect_ratio: bool = True,
@@ -42,6 +40,8 @@ class Scenes15Dataset(_ClassificationBase):
         ---------- 
         root_dir : str
             Path to the root directory containing class subdirectories.
+        image_mode : str, optional
+            Color mode for loading images (e.g., 'RGB', 'L'). Default is 'RGB'.
         image_scale : float, optional
             Scale factor to resize images. Default is None (no scaling).
         image_size : tuple, optional
@@ -69,13 +69,15 @@ class Scenes15Dataset(_ClassificationBase):
         ...     pass
         """
         super().__init__(
+            root_dir=root_dir,
+            image_mode=image_mode,
             image_scale=image_scale,
             image_size=image_size,
             preserve_aspect_ratio=preserve_aspect_ratio,
             interpolation=interpolation
         )
 
-        self.root_dir = Path(root_dir)
+        self.root_dir = Path(self.root_dir)
 
         self.classes = [x.name for x in self.root_dir.iterdir() if not x.is_file()]
 
@@ -91,9 +93,9 @@ class Scenes15Dataset(_ClassificationBase):
         self.__initialize__()
 
 
-    def __getitem__(self, index: int) -> tuple[np.ndarray, int]:
+    def _get_image_path_and_label(self, index: int) -> tuple[str, str]:
         """
-        Get an image and corresponding label from the dataset.
+        Get the image path and label for a given index.
 
         Parameters
         ----------
@@ -102,13 +104,11 @@ class Scenes15Dataset(_ClassificationBase):
 
         Returns
         -------
-        tuple[np.ndarray, int]
-            A tuple containing the image as a NumPy array and its corresponding label.
+        tuple[str, str]
+            A tuple containing the image path and its corresponding label.
+
         """
         label = self.labels[index]
-        
-        img_path = self.root_dir / label / self.filenames[index]
-        image = imread(img_path, mode="RGB")
-        image = self._preprocess_image(image)
+        image_path = str(self.root_dir / label / self.filenames[index])
 
-        return image, self.class_name_to_index(label)
+        return image_path, label

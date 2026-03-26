@@ -4,23 +4,22 @@ Dataloader for Princeton SUN dataset: https://vision.princeton.edu/projects/2010
 
 # Author: Atif Khurshid
 # Created: 2025-05-23
-# Modified: 2026-03-03
-# Version: 1.2
+# Modified: 2026-03-26
+# Version: 1.3
 # Changelog:
 #     - 2026-03-03: Added option to load images from HDF5 file for faster loading.
 #     - 2026-03-03: Enabled dynamic changes in class hierarchy after initialization.
 #     - 2026-03-03: Refactored code to remove redundant pytorch dataset classes.
 #     - 2026-03-03: Added support for image scaling.
+#     - 2026-03-26: Refactored code to match updated base class.
 
 import os
 from typing import Optional
 
-import h5py
 import numpy as np
 import pandas as pd
 
 from .._base import _ClassificationBase
-from ....image import imread
 from ....utils import stratified_sampling_by_class
 
 
@@ -33,6 +32,7 @@ class SUNDataset(_ClassificationBase):
             split_idx: int = 0,
             n_samples: int = 0,
             hdf5_mode: bool = False,
+            image_mode: str = 'RGB',
             image_scale: Optional[float] = None,
             image_size: Optional[tuple[int, int]] = None,
             preserve_aspect_ratio: bool = True,
@@ -57,6 +57,8 @@ class SUNDataset(_ClassificationBase):
             Index of the split to use. The dataset is divided into 10 splits. Default is 0.
         n_samples : int, optional
             Number of samples to load from each class. This is used for stratified sampling. Default is 0 (no sampling).
+        image_mode : str, optional
+            Mode to read images. Can be 'RGB', 'GRAY', or a cv2.IMREAD_... flag. Default is 'RGB'.
         hdf5_mode : bool, optional
             If True, load images from an HDF5 file instead of individual image files. Default is False.
         image_scale : float, optional
@@ -95,23 +97,20 @@ class SUNDataset(_ClassificationBase):
 
         """
         super().__init__(
+            root_dir=root_dir,
+            image_mode=image_mode,
+            hdf5_mode=hdf5_mode,
             image_scale=image_scale,
             image_size=image_size,
             preserve_aspect_ratio=preserve_aspect_ratio,
             interpolation=interpolation
         )
-
-        self.root_dir = root_dir
-        self.hdf5_mode = hdf5_mode
-
         if hdf5_mode:
-            self.images_file = h5py.File(os.path.join(self.root_dir, "images.hdf5"), "r")
-            self._read_image = self._read_image_from_hdf5
+            self.images_dir = ""
         else:
-            self.images_dir = os.path.join(self.root_dir, 'images')
+            self.images_dir = os.path.join(self.root_dir, "images")
             if not os.path.exists(self.images_dir):
                 raise FileNotFoundError(f"Directory {self.images_dir} does not exist.")
-            self._read_image = self._read_image_from_file
     
         splits = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10']
         assert split_idx < len(splits), f"Invalid split index {split_idx}. Must be less than {len(splits)}."
@@ -167,67 +166,26 @@ class SUNDataset(_ClassificationBase):
         self.set_class_hierarchy(class_hierarchy)
 
 
-    def __getitem__(self, idx: int) -> tuple[np.ndarray, int]:
+    def _get_image_path_and_label(self, index: int) -> tuple[str, str]:
         """
-        Returns the image and label at the specified index.
-        The image is read in RGB format and resized to the specified image size.
+        Get the image path and label for a given index.
 
         Parameters
         ----------
-        idx : int
-            Index of the sample to retrieve.
+        index : int
+            Index of the item to retrieve.
 
         Returns
         -------
-        tuple[np.ndarray, int]
-            A tuple containing the image as a numpy array and the label index.
+        tuple[str, str]
+            A tuple containing the image path and its corresponding label.
+
         """
-        image = self._read_image(idx)
-        image = self._preprocess_image(image)
-        label = self.class_name_to_index(self.labels[idx])
+        image_path = os.path.join(self.images_dir, self.filepaths[index])
+        label = self.labels[index]
 
-        return image, label
+        return image_path, label
 
-
-    def _read_image_from_file(self, idx: int) -> np.ndarray:
-        """
-        Reads an image from the file system based on the index.
-
-        Parameters
-        ----------
-        idx : int
-            Index of the sample to retrieve.
-
-        Returns
-        -------
-        np.ndarray
-            The image as a numpy array.
-        """
-        img_path = os.path.join(self.images_dir, self.filepaths[idx])
-        image = imread(img_path, mode="RGB")
-        
-        return image
-
-
-    def _read_image_from_hdf5(self, idx: int) -> np.ndarray:
-        """
-        Reads an image from the HDF5 file based on the index.
-
-        Parameters
-        ----------
-        idx : int
-            Index of the sample to retrieve.
-
-        Returns
-        -------
-        np.ndarray
-            The image as a numpy array.
-        """
-        img_path = self.filepaths[idx]
-        image = self.images_file['/' + img_path][:]
-            
-        return image
-    
 
     def set_class_hierarchy(self, class_hierarchy: str):
         """
@@ -251,12 +209,3 @@ class SUNDataset(_ClassificationBase):
         self.labels = self.labels_dict[class_hierarchy]
         self.classes = sorted(list(set(self.labels)))
         self.__initialize__()
-
-
-    def __del__(self):
-        """
-        Closes the HDF5 file if it was opened in hdf5_mode when the dataset object is deleted.
-        """
-        if self.hdf5_mode and self.images_file is not None:
-            self.images_file.close()
-            self.images_file = None

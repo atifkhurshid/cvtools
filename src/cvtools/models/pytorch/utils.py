@@ -4,8 +4,8 @@ Utility functions for PyTorch models.
 
 # Author: Atif Khurshid
 # Created: 2025-06-22
-# Modified: 2026-03-18
-# Version: 2.5
+# Modified: 2026-03-25
+# Version: 2.6
 # Changelog:
 #     - 2025-08-01: Added type hints and documentation.
 #     - 2025-08-01: Updated training loop to include epochs.
@@ -23,6 +23,7 @@ Utility functions for PyTorch models.
 #     - 2026-03-13: Added error handling to training loop and ensured wandb run is finished properly.
 #     - 2026-03-16: Added support for a pretraining loop in run_trials.
 #     - 2026-03-18: Added support for ROC curve computation in run_trials.
+#     - 2026-03-25: Added support for saving model checkpoints during training.
 
 from pathlib import Path
 from typing import Callable, Union, Optional
@@ -192,7 +193,7 @@ def test_classification_model(
     model.eval()
     model.metric.reset()
 
-    if isinstance(data, DataLoader):
+    if not isinstance(data, tuple):
         n_batches = len(data)
         outputs = []
         y_pred, y_true = [], []
@@ -200,11 +201,11 @@ def test_classification_model(
         with torch.no_grad():
             for X, y in tqdm(data, total=n_batches, disable=not pbar):
                 batch_outputs, batch_loss, batch_pred = model.test_step(X, y, return_outputs)
-                y_pred.extend(batch_pred.numpy())
-                y_true.extend(y.numpy())
+                y_pred.extend(batch_pred.cpu().numpy())
+                y_true.extend(y.cpu().numpy())
                 loss += batch_loss
                 if return_outputs:
-                    outputs.extend(batch_outputs.numpy())
+                    outputs.extend(batch_outputs.cpu().numpy())
         y_pred = np.array(y_pred)
         y_true = np.array(y_true)
         loss /= n_batches
@@ -214,10 +215,10 @@ def test_classification_model(
         X, y = data
         with torch.no_grad():
             outputs, loss, y_pred = model.test_step(X, y, return_outputs)
-        y_pred = y_pred.numpy()
-        y_true = y.numpy()
+        y_pred = y_pred.cpu().numpy()
+        y_true = y.cpu().numpy()
         if return_outputs:
-            outputs = outputs.numpy()
+            outputs = outputs.cpu().numpy()
 
     metric = model.compute_metric()
 
@@ -241,6 +242,8 @@ def train_classification_model(
         restore_best_weights: bool = True,
         run: Optional[wandb.Run] = None,
         log_interval: int = 10,
+        checkpoint_dir: Optional[str] = None,
+        checkpoint_interval: int = 10,
         verbose: bool = True,
     ):
     """
@@ -271,12 +274,17 @@ def train_classification_model(
     min_delta : float
         Minimum change in the monitored quantity to qualify as an improvement for early stopping. Default is 1e-4.
     restore_best_weights : bool
-        Whether to restore the model weights from the epoch with the best validation loss after training. Default
+        Whether to restore the model weights from the epoch with the best validation loss after training. Default is True.
     run : wandb.Run | None
         Weights & Biases run for logging. If None, no logging is performed.
         Default is None.
     log_interval : int
         Interval (in steps) at which to log training progress. Default is 10.
+    checkpoint_dir : str | None
+        Directory to save model checkpoints. If None, no checkpoints are saved.
+        Default is None.
+    checkpoint_interval : int
+        Interval (in epochs) at which to save model checkpoints. Default is 10.
     verbose : bool
         Whether to print training progress to the console. Default is True.
 
@@ -290,6 +298,10 @@ def train_classification_model(
     >>> train_classification_model(model, train_dataloader, val_dataloader=val_dataloader)
     """
     try:
+        if checkpoint_dir is not None:
+            checkpoint_dir = Path(checkpoint_dir)
+            checkpoint_dir.mkdir(parents=True, exist_ok=True)
+
         if val_dataloader is not None:
             if val_strategy == "batch":
                 val_dataloader = InfiniteDataLoader(val_dataloader)
@@ -372,15 +384,23 @@ def train_classification_model(
                         epoch = epochs  # Exit outer loop
 
             model.on_epoch_end()
-        
+
+            if checkpoint_dir is not None and epoch % checkpoint_interval == 0:
+                if verbose:
+                    print(f"Saving checkpoint for epoch {epoch}...")
+                torch.save(model.state_dict(), checkpoint_dir / f"model_epoch_{epoch}.pth")
+
         if early_stopping and not early_stopper.early_stop:
             early_stopper.restore(model)
 
         model.eval()
     
     except Exception as e:
-        wandb.finish()
-        raise e
+        try:
+            pass
+        finally:
+            wandb.finish()
+            raise e
 
 
 def run_trials(

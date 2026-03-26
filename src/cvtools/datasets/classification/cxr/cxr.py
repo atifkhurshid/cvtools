@@ -4,8 +4,8 @@ Dataloader for NIH Chest X-Ray dataset: https://nihcc.app.box.com/v/ChestXray-NI
 
 # Author: Atif Khurshid
 # Created: 2025-05-20
-# Modified: 2026-02-13
-# Version: 2.3
+# Modified: 2026-03-26
+# Version: 2.4
 # Changelog:
 #     - 2025-05-22: Add image_size parameter for resizing images
 #     - 2025-05-22: Remove pytorch dependency and refactor code
@@ -14,14 +14,13 @@ Dataloader for NIH Chest X-Ray dataset: https://nihcc.app.box.com/v/ChestXray-NI
 #     - 2026-02-12: Add option to specify view position (AP/PA)
 #     - 2026-02-13: Add option to specify class mode (binary/singleclass/multiclass)
 #     - 2026-03-03: Refactored code to use new image processing functions.
+#     - 2026-03-26: Refactored code to match updated base class.
 
 import os
 from typing import Optional
 
-import numpy as np
 import pandas as pd
 
-from ....image import imread
 from .._base import _ClassificationBase
 
 
@@ -32,6 +31,7 @@ class CXRDataset(_ClassificationBase):
         view: str = "AP",
         train: bool = True,
         class_mode: str = "singleclass",
+        image_mode: str = "GRAY",
         image_scale: Optional[float] = None,
         image_size: Optional[tuple[int, int]] = None,
         preserve_aspect_ratio: bool = True,
@@ -58,6 +58,8 @@ class CXRDataset(_ClassificationBase):
             Mode for class labels. Can be "binary" (0 for 'No Finding', 1 for 'Finding'),
             "singleclass" (only the first label for samples with multiple labels),
             or "multiclass" (all labels as they are). Default is "singleclass".
+        image_mode : str, optional
+            Mode to read images. Default is "GRAY" for grayscale images.
         image_scale : float, optional
             Scale factor to resize images. Default is None (no scaling).
         image_size : tuple, optional
@@ -91,13 +93,13 @@ class CXRDataset(_ClassificationBase):
         ...     pass
         """
         super().__init__(
+            root_dir=root_dir,
+            image_mode=image_mode,
             image_scale=image_scale,
             image_size=image_size,
             preserve_aspect_ratio=preserve_aspect_ratio,
             interpolation=interpolation
         )
-
-        self.root_dir = root_dir
 
         self.images_dir = os.path.join(self.root_dir, 'images')
         if not os.path.exists(self.images_dir):
@@ -147,28 +149,25 @@ class CXRDataset(_ClassificationBase):
         self.__initialize__()
 
 
-    def __getitem__(self, index: int) -> tuple[np.ndarray, int]:
+    def _get_image_path_and_label(self, index: int) -> tuple[str, str]:
         """
-        Get an image and corresponding label from the dataset.
-        The image is read in grayscale and resized to the specified image size.
+        Get the image path and label for a given index.
 
         Parameters
         ----------
-        idx : int
-            Index of the sample to retrieve.
+        index : int
+            Index of the item to retrieve.
 
         Returns
         -------
-        tuple[np.ndarray, int]
-            A tuple containing the image as a numpy array and its corresponding label index.
+        tuple[str, str]
+            A tuple containing the image path and its corresponding label.
+
         """
-        img_path = os.path.join(
+        image_path = os.path.join(
             self.images_dir,
             str(self.data.loc[index, 'Image Index'])
         )
-        image = imread(img_path, mode="GRAY")
-        image = self._preprocess_image(image)
+        label = self.labels[index]
 
-        label = self.class_name_to_index(self.labels[index])
-
-        return image, label
+        return image_path, label
