@@ -4,20 +4,19 @@ Base class for classification datasets.
 
 # Author: Atif Khurshid
 # Created: 2025-06-18
-# Modified: 2026-03-26
-# Version: 1.3
+# Modified: 2026-03-27
+# Version: 1.4
 # Changelog:
 #     - 2026-03-03: Added _preprocess_image method to handle image scaling and resizing in a consistent way across datasets.
 #     - 2026-03-26: Merged repeated code into base class.
+#     - 2026-03-27: Refactored base class into separate base classes for image-based and HDF5-based datasets.
 
-from typing import Optional, Union
+from typing import Optional, Union, Callable
 
-import os
 import cv2
-import h5py
 import numpy as np
 
-from ....image import imread, imscale, imresize, imresize_maximum
+from ....image import imscale, imresize, imresize_maximum
 
 
 class _ClassificationBase:
@@ -29,42 +28,51 @@ class _ClassificationBase:
     def __init__(
             self,
             root_dir: str,
-            image_mode: Union[str, int] = 'RGB',
-            hdf5_mode: bool = False,
             image_scale: Optional[float] = None,
             image_size: Optional[Union[int, tuple[int, int]]] = None,
             preserve_aspect_ratio: bool = True,
             interpolation: Optional[int] = None,
         ):
+        """
+        Initializes the classification dataset.
 
+        Parameters
+        ----------
+        root_dir : str
+            Path to the root directory containing class subdirectories or HDF5 file.
+        image_scale : float, optional
+            Scale factor to resize images. Default is None (no scaling).
+        image_size : int | tuple, optional
+            Size of the images to be resized to. If int, resizes the maximum dimension to this size.
+            If tuple, should be (height, width). Default is None (no resizing).
+        preserve_aspect_ratio : bool, optional
+            If True, preserve the aspect ratio of the images when resizing. Default is True.
+        interpolation : int, optional
+            Interpolation method to use when resizing images. Should be a cv2.INTER_... flag.
+            Default is None.
+
+        Attributes
+        ----------
+        classes : list[str]
+            List of class names.
+        class2index : dict[str, int]
+            Mapping from class names to integer indices.
+        index2class : dict[int, str]
+            Mapping from integer indices to class names.
+        labels : list[str]
+            List of labels corresponding to the images.
+        """
         self.classes: list
         self.labels: list
         self.class2index: dict
         self.index2class: dict
-        self.images_file: h5py.File
+        self._read_image: Callable[[str], np.ndarray]
 
         self.root_dir = root_dir
-        self.image_mode = image_mode
-        self.hdf5_mode = hdf5_mode
         self.image_scale = image_scale
         self.image_size = image_size
         self.preserve_aspect_ratio = preserve_aspect_ratio
         self.interpolation = interpolation if interpolation is not None else cv2.INTER_AREA
-
-        if self.hdf5_mode:
-            self._read_image = self._read_image_from_hdf5
-            self.images_file = h5py.File(os.path.join(self.root_dir, "images.hdf5"), "r")
-        else:
-            self._read_image = self._read_image_from_file
-
-
-    def __initialize__(self):
-        """
-        Initialize the dataset by setting up class names, labels, and mappings.
-        This method should be called at the end of the subclass' constructor.
-        """
-        self.class2index = {c: i for i, c in enumerate(self.classes)}
-        self.index2class = {i: c for c, i in self.class2index.items()}
 
 
     def __len__(self) -> int:
@@ -103,15 +111,6 @@ class _ClassificationBase:
         return image, label
 
 
-    def __del__(self):
-        """
-        Closes the HDF5 file if it was opened in hdf5_mode when the dataset object is deleted.
-        """
-        if self.hdf5_mode and self.images_file is not None:
-            self.images_file.close()
-            self.images_file = None
-
-
     def _get_image_path_and_label(self, index: int) -> tuple[str, str]:
         """
         Get the image path and label for a given index.
@@ -129,6 +128,56 @@ class _ClassificationBase:
         msg = "Subclasses must implement the _get_image_path_and_label method to return" \
               "the image path and label for a given index."
         raise NotImplementedError(msg)
+
+
+    def _preprocess_image(self, image: np.ndarray) -> np.ndarray:
+        """
+        Process the image by applying scaling and resizing if specified.
+
+        Parameters
+        ----------
+        image : np.ndarray
+            The input image to process.
+
+        Returns
+        -------
+        np.ndarray
+            The processed image.
+        """
+        if self.image_scale is not None:
+            
+            image = imscale(
+                image,
+                self.image_scale,
+                interpolation=self.interpolation
+            )
+
+        if self.image_size is not None:
+
+            if isinstance(self.image_size, int):
+                image = imresize_maximum(
+                    image,
+                    max_size=self.image_size,
+                    interpolation=self.interpolation
+                )
+            else:
+                image = imresize(
+                    image,
+                    size=self.image_size,
+                    preserve_aspect_ratio=self.preserve_aspect_ratio,
+                    interpolation=self.interpolation
+                )
+
+        return image
+    
+
+    def _initialize(self):
+        """
+        Initialize the dataset by setting up class names, labels, and mappings.
+        This method should be called at the end of the subclass' constructor.
+        """
+        self.class2index = {c: i for i, c in enumerate(self.classes)}
+        self.index2class = {i: c for c, i in self.class2index.items()}
 
 
     @property
@@ -176,76 +225,3 @@ class _ClassificationBase:
             The corresponding class name for the index.
         """
         return self.index2class.get(x, "Unknown")
-
-
-    def _read_image_from_file(self, path: str) -> np.ndarray:
-        """
-        Reads an image from the file system based on the index.
-
-        Parameters
-        ----------
-        path : str
-            Path to the image file.
-
-        Returns
-        -------
-        np.ndarray
-            The image as a numpy array.
-        """
-        image = imread(path, mode=self.image_mode)
-        
-        return image
-
-
-    def _read_image_from_hdf5(self, path: str) -> np.ndarray:
-        """
-        Reads an image from the HDF5 file based on the index.
-
-        Parameters
-        ----------
-        path : str
-            Path to the image in the HDF5 file.
-
-        Returns
-        -------
-        np.ndarray
-            The image as a numpy array.
-        """
-        image = self.images_file[path][:]
-            
-        return image
-
-
-    def _preprocess_image(self, image: np.ndarray) -> np.ndarray:
-        """
-        Process the image by applying scaling and resizing if specified.
-
-        Parameters
-        ----------
-        image : np.ndarray
-            The input image to process.
-
-        Returns
-        -------
-        np.ndarray
-            The processed image.
-        """
-        if self.image_scale is not None:
-            image = imscale(image, self.image_scale, interpolation=self.interpolation)
-
-        if self.image_size is not None:
-            if isinstance(self.image_size, int):
-                image = imresize_maximum(
-                    image,
-                    max_size=self.image_size,
-                    interpolation=self.interpolation
-                )
-            else:
-                image = imresize(
-                    image,
-                    size=self.image_size,
-                    preserve_aspect_ratio=self.preserve_aspect_ratio,
-                    interpolation=self.interpolation
-                )
-
-        return image

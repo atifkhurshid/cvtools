@@ -1,1 +1,3 @@
 from .classification_base import _ClassificationBase
+from .classification_image import _ClassificationBaseImage
+from .classification_hdf5 import _ClassificationBaseHDF5

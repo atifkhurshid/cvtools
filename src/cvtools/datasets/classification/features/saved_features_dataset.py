@@ -111,4 +111,4 @@ class SavedFeaturesDataset():
         name : str
             Name of the attribute to access.
         """
-        return getattr(self._dataset, name)
+        return getattr(self._dataset, name).__get__(self)

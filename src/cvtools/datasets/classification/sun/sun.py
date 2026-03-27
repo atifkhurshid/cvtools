@@ -4,7 +4,7 @@ Dataloader for Princeton SUN dataset: https://vision.princeton.edu/projects/2010
 
 # Author: Atif Khurshid
 # Created: 2025-05-23
-# Modified: 2026-03-26
+# Modified: 2026-03-27
 # Version: 1.3
 # Changelog:
 #     - 2026-03-03: Added option to load images from HDF5 file for faster loading.
@@ -12,18 +12,19 @@ Dataloader for Princeton SUN dataset: https://vision.princeton.edu/projects/2010
 #     - 2026-03-03: Refactored code to remove redundant pytorch dataset classes.
 #     - 2026-03-03: Added support for image scaling.
 #     - 2026-03-26: Refactored code to match updated base class.
+#     - 2026-03-27: Refactored code to match updated base class.
 
 import os
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
 
-from .._base import _ClassificationBase
+from .._base import _ClassificationBaseImage, _ClassificationBaseHDF5
 from ....utils import stratified_sampling_by_class
 
 
-class SUNDataset(_ClassificationBase):
+class SUNDataset(_ClassificationBaseImage, _ClassificationBaseHDF5):
     def __init__(
             self,
             root_dir: str,
@@ -31,10 +32,10 @@ class SUNDataset(_ClassificationBase):
             train: bool = True,
             split_idx: int = 0,
             n_samples: int = 0,
-            hdf5_mode: bool = False,
+            hdf5_mode: Optional[str] = None,
             image_mode: str = 'RGB',
             image_scale: Optional[float] = None,
-            image_size: Optional[tuple[int, int]] = None,
+            image_size: Optional[Union[int, tuple[int, int]]] = None,
             preserve_aspect_ratio: bool = True,
             interpolation: Optional[int] = None,
         ):
@@ -59,12 +60,14 @@ class SUNDataset(_ClassificationBase):
             Number of samples to load from each class. This is used for stratified sampling. Default is 0 (no sampling).
         image_mode : str, optional
             Mode to read images. Can be 'RGB', 'GRAY', or a cv2.IMREAD_... flag. Default is 'RGB'.
-        hdf5_mode : bool, optional
-            If True, load images from an HDF5 file instead of individual image files. Default is False.
+        hdf5_mode : str, optional
+            If "stream", load images from an HDF5 file on-the-fly.
+            If "preload", preload all images from the HDF5 file into memory. Default is None (load from files).
         image_scale : float, optional
             Scale factor to resize images. Default is None (no scaling).
-        image_size : tuple, optional
-            Size of the images to be resized to (height, width). Default is None.
+        image_size : int | tuple, optional
+            Size of the images to be resized to. If int, resizes the maximum dimension to this size.
+            If tuple, should be (height, width). Default is None (no resizing).
         preserve_aspect_ratio : bool, optional
             If True, preserve the aspect ratio of the images when resizing. Default is True.
         interpolation : int, optional
@@ -96,18 +99,32 @@ class SUNDataset(_ClassificationBase):
         ...     pass
 
         """
-        super().__init__(
-            root_dir=root_dir,
-            image_mode=image_mode,
-            hdf5_mode=hdf5_mode,
-            image_scale=image_scale,
-            image_size=image_size,
-            preserve_aspect_ratio=preserve_aspect_ratio,
-            interpolation=interpolation
-        )
         if hdf5_mode:
+
+            self._parent_class = _ClassificationBaseHDF5
+            _ClassificationBaseHDF5.__init__(
+                self,
+                root_dir=root_dir,
+                hdf5_mode=hdf5_mode,
+                image_scale=image_scale,
+                image_size=image_size,
+                preserve_aspect_ratio=preserve_aspect_ratio,
+                interpolation=interpolation
+            )
             self.images_dir = ""
+
         else:
+            self._parent_class = _ClassificationBaseImage
+            _ClassificationBaseImage.__init__(
+                self,
+                root_dir=root_dir,
+                image_mode=image_mode,
+                image_scale=image_scale,
+                image_size=image_size,
+                preserve_aspect_ratio=preserve_aspect_ratio,
+                interpolation=interpolation
+            )
+
             self.images_dir = os.path.join(self.root_dir, "images")
             if not os.path.exists(self.images_dir):
                 raise FileNotFoundError(f"Directory {self.images_dir} does not exist.")
@@ -208,4 +225,8 @@ class SUNDataset(_ClassificationBase):
         self.class_hierarchy = class_hierarchy
         self.labels = self.labels_dict[class_hierarchy]
         self.classes = sorted(list(set(self.labels)))
-        self.__initialize__()
+        self._initialize()
+
+
+    def __getattr__(self, name):
+        return getattr(self._parent_class, name).__get__(self)

@@ -4,13 +4,14 @@ Generic dataloader for image classification tasks.
 
 # Author: Atif Khurshid
 # Created: 2022-12-18
-# Modified: 2026-03-26
+# Modified: 2026-03-27
 # Version: 1.3
 # Changelog:
 #     - 2025-06-18: Updated documentation and type hints.
 #     - 2025-10-30: Refactored image loading to use imread function.
 #     - 2026-03-03: Refactored code to use new image processing functions.
 #     - 2026-03-26: Refactored code to match updated base class.
+#     - 2026-03-27: Refactored code to match updated base class.
 
 import os
 from pathlib import Path
@@ -18,20 +19,20 @@ from typing import Optional, Union
 
 import numpy as np
 
-from .._base import _ClassificationBase
+from .._base import _ClassificationBaseImage, _ClassificationBaseHDF5
 from ....image import IMAGE_EXTENSIONS
 
 
-class ClassificationDataset(_ClassificationBase):
+class ClassificationDataset(_ClassificationBaseImage, _ClassificationBaseHDF5):
 
     def __init__(
             self,
             root_dir: str,
-            exts: list[str] = IMAGE_EXTENSIONS,
+            exts: Union[list[str], str] = "auto",
+            hdf5_mode: Optional[str] = None,
             image_mode: Union[str, int] = 'RGB',
-            hdf5_mode: bool = False,
             image_scale: Optional[float] = None,
-            image_size: Optional[tuple[int, int]] = None,
+            image_size: Optional[Union[int, tuple[int, int]]] = None,
             preserve_aspect_ratio: bool = True,
             interpolation: Optional[int] = None,
         ):
@@ -45,16 +46,18 @@ class ClassificationDataset(_ClassificationBase):
         ---------- 
         root_dir : str
             Path to the root directory containing class subdirectories.
-        exts : list[str], optional
-            List of file extensions to consider as valid images. Default is IMAGE_EXTENSIONS.
+        exts : list[str] | str, optional
+            List of file extensions to consider as valid images. Default is "auto" (uses IMAGE_EXTENSIONS).
+        hdf5_mode : str, optional
+            If "stream", load images from an HDF5 file on-the-fly.
+            If "preload", preload all images from the HDF5 file into memory. Default is None (load from files).
         image_mode : str | int, optional
             Mode to read images. Can be 'RGB', 'GRAY', or a cv2.IMREAD_... flag. Default is 'RGB'.
-        hdf5_mode : bool, optional
-            If True, load images from an HDF5 file instead of individual image files. Default is False.
         image_scale : float, optional
             Scale factor to resize images. Default is None (no scaling).
-        image_size : tuple, optional
-            Size of the images to be resized to (height, width). Default is None.
+        image_size : int | tuple, optional
+            Size of the images to be resized to. If int, resizes the maximum dimension to this size.
+            If tuple, should be (height, width). Default is None (no resizing).
         preserve_aspect_ratio : bool, optional
             If True, preserve the aspect ratio of the images when resizing. Default is True.
         interpolation : int, optional
@@ -62,14 +65,6 @@ class ClassificationDataset(_ClassificationBase):
 
         Attributes
         ----------
-        classes : list[str]
-            List of class names (subdirectory names).
-        class2label : dict[str, int]
-            Mapping from class names to integer labels.
-        label2class : dict[int, str]
-            Mapping from integer labels to class names.
-        labels : list[int]
-            List of labels corresponding to the images.
         filenames : list[str]
             List of filenames of the images.
         ids : np.ndarray
@@ -85,20 +80,25 @@ class ClassificationDataset(_ClassificationBase):
         ...     # Process each image and label
         ...     pass
         """
-        super().__init__(
-            root_dir=root_dir,
-            image_mode=image_mode,
-            hdf5_mode=hdf5_mode,
-            image_scale=image_scale,
-            image_size=image_size,
-            preserve_aspect_ratio=preserve_aspect_ratio,
-            interpolation=interpolation
-        )
+        if exts == "auto":
+            exts = IMAGE_EXTENSIONS
 
-        if hdf5_mode:
+        if hdf5_mode is not None:
+
+            self._parent_class = _ClassificationBaseHDF5
+
+            _ClassificationBaseHDF5.__init__(
+                self,
+                root_dir=root_dir,
+                hdf5_mode=hdf5_mode,
+                image_scale=image_scale,
+                image_size=image_size,
+                preserve_aspect_ratio=preserve_aspect_ratio,
+                interpolation=interpolation
+            )
 
             self.root_dir = ""
-
+            
             self.classes = list(self.images_file.keys())
 
             self.labels = []
@@ -110,14 +110,26 @@ class ClassificationDataset(_ClassificationBase):
 
         else:
 
-            self.root_dir = Path(self.root_dir)
+            self._parent_class = _ClassificationBaseImage
 
-            self.classes = [x.name for x in self.root_dir.iterdir() if not x.is_file()]
+            _ClassificationBaseImage.__init__(
+                self,
+                root_dir=root_dir,
+                image_mode=image_mode,
+                image_scale=image_scale,
+                image_size=image_size,
+                preserve_aspect_ratio=preserve_aspect_ratio,
+                interpolation=interpolation
+            )
+
+            root_dir_path = Path(self.root_dir)
+
+            self.classes = [x.name for x in root_dir_path.iterdir() if not x.is_file()]
 
             self.labels = []
             self.filenames = []
             for i, c in enumerate(self.classes):
-                directory = self.root_dir / c
+                directory = root_dir_path / c
                 filenames = [x.name for x in directory.iterdir() if x.suffix in exts]
                 labels = [c] * len(filenames)
                 self.filenames.extend(filenames)
@@ -125,7 +137,7 @@ class ClassificationDataset(_ClassificationBase):
 
         self.ids = np.arange(len(self.filenames))
 
-        self.__initialize__()
+        self._initialize()
 
 
     def _get_image_path_and_label(self, index: int) -> tuple[str, str]:
@@ -148,3 +160,8 @@ class ClassificationDataset(_ClassificationBase):
         image_path = os.path.join(self.root_dir, label, self.filenames[id])
 
         return image_path, label
+
+
+    def __getattr__(self, name):
+        return getattr(self._parent_class, name).__get__(self)
+    

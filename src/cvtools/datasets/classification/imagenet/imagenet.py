@@ -3,11 +3,12 @@ ImageNet dataset for classification tasks.
 """
 
 # Author: Atif Khurshid
-# Created: 2025-03-26
-# Modified: None
+# Created: 2026-03-26
+# Modified: 2026-03-27
 # Version: 1.0
 # Changelog:
 #     - 2026-03-26: Created ImageNet dataset class.
+#     - 2026-03-27: Refactored code to match updated base class.
 
 import os
 from pathlib import Path
@@ -17,7 +18,6 @@ import torch
 from torchvision.datasets.utils import check_integrity
 
 from ..generic import ClassificationDataset
-from ....image import IMAGE_EXTENSIONS
 
 
 class ImageNetDataset(ClassificationDataset):
@@ -29,11 +29,11 @@ class ImageNetDataset(ClassificationDataset):
             self,
             root_dir: str,
             split: str = 'train',
-            exts: list[str] = IMAGE_EXTENSIONS,
+            exts: Union[list[str], str] = "auto",
+            hdf5_mode: Optional[str] = None,
             image_mode: Union[str, int] = 'RGB',
-            hdf5_mode: bool = False,
             image_scale: Optional[float] = None,
-            image_size: Optional[tuple[int, int]] = None,
+            image_size: Optional[Union[int, tuple[int, int]]] = None,
             preserve_aspect_ratio: bool = True,
             interpolation: Optional[int] = None,
         ):
@@ -47,16 +47,18 @@ class ImageNetDataset(ClassificationDataset):
         ----------
         root_dir : str
             Path to the root directory containing class subdirectories.
-        exts : list[str], optional
-            List of file extensions to consider as valid images. Default is ['.jpg', '.png'].
+        exts : list[str] | str, optional
+            List of file extensions to consider as valid images. Default is "auto" (uses IMAGE_EXTENSIONS).
+        hdf5_mode : str, optional
+            If "stream", load images from an HDF5 file on-the-fly.
+            If "preload", preload all images from the HDF5 file into memory. Default is None (load from files).
         image_mode : str | int, optional
             Mode to read images. Can be 'RGB', 'GRAY', or a cv2.IMREAD_... flag. Default is 'RGB'.
-        hdf5_mode : bool, optional
-            If True, load images from an HDF5 file instead of individual image files. Default is False.
         image_scale : float, optional
             Scale factor to resize images. Default is None (no scaling).
-        image_size : tuple, optional
-            Size of the images to be resized to (height, width). Default is None.
+        image_size : int | tuple, optional
+            Size of the images to be resized to. If int, resizes the maximum dimension to this size.
+            If tuple, should be (height, width). Default is None (no resizing).
         preserve_aspect_ratio : bool, optional
             If True, preserve the aspect ratio of the images when resizing. Default is True.
         interpolation : int, optional
@@ -80,7 +82,7 @@ class ImageNetDataset(ClassificationDataset):
             interpolation=interpolation,
         )
 
-        self.__initialize__()
+        self._initialize()
 
         # Reused from torchvision ImageNet dataset implementation
         wnid_to_classes = load_meta_file(root_dir)[0]

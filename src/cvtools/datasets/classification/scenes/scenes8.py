@@ -5,25 +5,26 @@ Link: https://people.csail.mit.edu/torralba/code/spatialenvelope/
 
 # Author: Atif Khurshid
 # Created: 2025-09-03
-# Modified: 2026-03-26
+# Modified: 2026-03-27
 # Version: 1.2
 # Changelog:
 #     - 2026-03-03: Refactored code to use new image processing functions.
 #     - 2026-03-26: Refactored code to match updated base class.
+#     - 2026-03-27: Refactored code to match updated base class.
 
 import os
-from typing import Optional
+from typing import Optional, Union
 
-from .._base import _ClassificationBase
+from .._base import _ClassificationBaseImage
 
 
-class Scenes8Dataset(_ClassificationBase):
+class Scenes8Dataset(_ClassificationBaseImage):
     def __init__(
             self,
             root_dir: str,
             image_mode: str = 'RGB',
             image_scale: Optional[float] = None,
-            image_size: Optional[tuple[int, int]] = None,
+            image_size: Optional[Union[int, tuple[int, int]]] = None,
             preserve_aspect_ratio: bool = True,
             interpolation: Optional[int] = None,
         ):
@@ -43,8 +44,9 @@ class Scenes8Dataset(_ClassificationBase):
             Mode to read images. Can be 'RGB', 'GRAY', or a cv2.IMREAD_... flag. Default is 'RGB'.
         image_scale : float, optional
             Scale factor to resize images. Default is None (no scaling).
-        image_size : tuple, optional
-            Size of the images to be resized to (height, width). Default is None.
+        image_size : int | tuple, optional
+            Size of the images to be resized to. If int, resizes the maximum dimension to this size.
+            If tuple, should be (height, width). Default is None (no resizing).
         preserve_aspect_ratio : bool, optional
             If True, preserve the aspect ratio of the images when resizing. Default is True.
         interpolation : int, optional
@@ -86,7 +88,7 @@ class Scenes8Dataset(_ClassificationBase):
         self.labels = [f.split("_")[0] for f in self.filenames]
         self.classes = sorted(list(set(self.labels)))
 
-        self.__initialize__()
+        self._initialize()
 
 
     def _get_image_path_and_label(self, index: int) -> tuple[str, str]:

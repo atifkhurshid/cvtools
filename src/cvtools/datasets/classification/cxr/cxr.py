@@ -4,7 +4,7 @@ Dataloader for NIH Chest X-Ray dataset: https://nihcc.app.box.com/v/ChestXray-NI
 
 # Author: Atif Khurshid
 # Created: 2025-05-20
-# Modified: 2026-03-26
+# Modified: 2026-03-27
 # Version: 2.4
 # Changelog:
 #     - 2025-05-22: Add image_size parameter for resizing images
@@ -15,16 +15,17 @@ Dataloader for NIH Chest X-Ray dataset: https://nihcc.app.box.com/v/ChestXray-NI
 #     - 2026-02-13: Add option to specify class mode (binary/singleclass/multiclass)
 #     - 2026-03-03: Refactored code to use new image processing functions.
 #     - 2026-03-26: Refactored code to match updated base class.
+#     - 2026-03-27: Refactored code to match updated base class.
 
 import os
-from typing import Optional
+from typing import Optional, Union
 
 import pandas as pd
 
-from .._base import _ClassificationBase
+from .._base import _ClassificationBaseImage
 
 
-class CXRDataset(_ClassificationBase):
+class CXRDataset(_ClassificationBaseImage):
     def __init__(
         self,
         root_dir: str,
@@ -33,7 +34,7 @@ class CXRDataset(_ClassificationBase):
         class_mode: str = "singleclass",
         image_mode: str = "GRAY",
         image_scale: Optional[float] = None,
-        image_size: Optional[tuple[int, int]] = None,
+        image_size: Optional[Union[int, tuple[int, int]]] = None,
         preserve_aspect_ratio: bool = True,
         interpolation: Optional[int] = None,
     ):
@@ -62,8 +63,9 @@ class CXRDataset(_ClassificationBase):
             Mode to read images. Default is "GRAY" for grayscale images.
         image_scale : float, optional
             Scale factor to resize images. Default is None (no scaling).
-        image_size : tuple, optional
-            Size of the images to be resized to (height, width). Default is None.
+        image_size : int | tuple, optional
+            Size of the images to be resized to. If int, resizes the maximum dimension to this size.
+            If tuple, should be (height, width). Default is None (no resizing).
         preserve_aspect_ratio : bool, optional
             If True, preserve the aspect ratio of the images when resizing. Default is True.
         interpolation : int, optional
@@ -146,7 +148,7 @@ class CXRDataset(_ClassificationBase):
         self.labels = self.data['Finding Labels'].tolist()
         self.classes = sorted(self.data['Finding Labels'].unique().tolist())
 
-        self.__initialize__()
+        self._initialize()
 
 
     def _get_image_path_and_label(self, index: int) -> tuple[str, str]:

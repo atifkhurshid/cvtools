@@ -5,27 +5,28 @@ Link: https://ieeexplore.ieee.org/document/1641019
 
 # Author: Atif Khurshid
 # Created: 2022-09-05
-# Modified: 2026-03-26
+# Modified: 2026-03-27
 # Version: 1.3
 # Changelog:
 #     - 2026:02-10: Used custom imread function.
 #     - 2026-03-03: Refactored code to use new image processing functions.
 #     - 2026-03-26: Refactored code to match updated base class.
+#     - 2026-03-27: Refactored code to match updated base class.
 
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
-from .._base import _ClassificationBase
+from .._base import _ClassificationBaseImage
 
 
-class Scenes15Dataset(_ClassificationBase):
+class Scenes15Dataset(_ClassificationBaseImage):
 
     def __init__(
             self,
             root_dir: str,
             image_mode: str = 'RGB',
             image_scale: Optional[float] = None,
-            image_size: Optional[tuple[int, int]] = None,
+            image_size: Optional[Union[int, tuple[int, int]]] = None,
             preserve_aspect_ratio: bool = True,
             interpolation: Optional[int] = None,
         ):
@@ -44,8 +45,9 @@ class Scenes15Dataset(_ClassificationBase):
             Color mode for loading images (e.g., 'RGB', 'L'). Default is 'RGB'.
         image_scale : float, optional
             Scale factor to resize images. Default is None (no scaling).
-        image_size : tuple, optional
-            Size of the images to be resized to (height, width). Default is None.
+        image_size : int | tuple, optional
+            Size of the images to be resized to. If int, resizes the maximum dimension to this size.
+            If tuple, should be (height, width). Default is None (no resizing).
         preserve_aspect_ratio : bool, optional
             If True, preserve the aspect ratio of the images when resizing. Default is True.
         interpolation : int, optional
@@ -90,7 +92,7 @@ class Scenes15Dataset(_ClassificationBase):
             self.filenames.extend(filenames)
             self.labels.extend(labels)
 
-        self.__initialize__()
+        self._initialize()
 
 
     def _get_image_path_and_label(self, index: int) -> tuple[str, str]:
