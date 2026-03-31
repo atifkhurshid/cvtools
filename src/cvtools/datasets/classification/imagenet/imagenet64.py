@@ -4,11 +4,12 @@
 
 # Author: Atif Khurshid
 # Created: 2026-03-26
-# Modified: 2026-03-27
-# Version: 1.0
+# Modified: 2026-03-31
+# Version: 1.1
 # Changelog:
 #     - 2026-03-26: Created 64x64 ImageNet dataset class.
 #     - 2026-03-27: Refactored code to match updated base class.
+#     - 2026-03-31: Updated labels to be consistent with ImageNet class mapping.
 
 import os
 import pickle
@@ -40,17 +41,30 @@ class ImageNet64Dataset(_ClassificationBase):
         normalize : bool, optional
             Whether to normalize the images by subtracting the mean and dividing by 255.
             Default is False.
+
+        Attributes
+        ----------
+        images : np.ndarray
+            Array of images in the dataset, with shape (N, 64, 64, 3) and dtype uint8.
+        class_indices : list[int]
+            List of class indices corresponding to each class in the dataset (0-based).
+        class_names : list[str]
+            List of class names corresponding to each class in the dataset, sorted by WordNet ID.
+        wnid2name : dict[str, str]
+            Dictionary mapping WordNet IDs to class names.
         """
         self.root_dir = root_dir
         self.split = split
         self.normalize = normalize
 
         self.images: np.ndarray
-        self.labels: np.ndarray
+        self.class_indices: list[int]
+        self.class_names: list[str]
+        self.wnid2name: dict[str, str]
 
         self._load_data()
-
-        self.classes = np.unique(self.labels)
+        self._load_class_mapping()
+        self._update_labels()
 
         self._initialize()
 
@@ -81,7 +95,10 @@ class ImageNet64Dataset(_ClassificationBase):
         tuple[np.ndarray, int]
             A tuple containing the image (as a numpy array) and its corresponding label (as an integer).
         """
-        return self.images[index], self.labels[index]
+        img = self.images[index]
+        label = self.class_name_to_index(self.labels[index])
+
+        return img, label
 
 
     def _load_data(self):
@@ -110,7 +127,6 @@ class ImageNet64Dataset(_ClassificationBase):
                 self.labels[offset:offset+batch_size] = y_batch
                 offset += batch_size
             
-
         elif self.split == 'val':
 
             self.images, self.labels = self._read_batch(
@@ -121,7 +137,7 @@ class ImageNet64Dataset(_ClassificationBase):
             raise ValueError(f"Invalid split: {self.split}. Must be 'train' or 'val'.")
         
     
-    def _read_batch(self, batch_path: str) -> tuple[np.ndarray, np.ndarray]:
+    def _read_batch(self, batch_path: str) -> tuple[np.ndarray, list[int]]:
         """
         Reads a single batch of data from the specified path.
 
@@ -132,18 +148,56 @@ class ImageNet64Dataset(_ClassificationBase):
 
         Returns
         -------
-        tuple[np.ndarray, np.ndarray]
+        tuple[np.ndarray, list[int]]
             A tuple containing the images (as a numpy array) and
-            their corresponding labels (as a numpy array of integers).
+            their corresponding labels (as a list of integers).
         """
         with open(batch_path, "rb") as f:
             batch = pickle.load(f)
 
         X = batch["data"]
-        y = np.array(batch["labels"]) - 1  # Convert to 0-based indexing
+        y = [i - 1 for i in batch["labels"]]  # Convert to 0-based indexing
 
         X = np.dstack((X[:, :4096], X[:, 4096:8192], X[:, 8192:]))
         X = X.reshape((-1, 64, 64, 3))
 
         return X, y
-    
+
+
+    def _load_class_mapping(self):
+        """
+        Loads the class mapping from the "map_clsloc.txt" file in the root directory.
+        Expects the file to be formatted as follows:
+            - Each line contains a WordNet ID (wnid), a class index, and a class name, separated by spaces.
+            - The class index is 1-based and will be converted to 0-based indexing.
+        """
+        mapping_path = os.path.join(self.root_dir, "map_clsloc.txt")
+        if not os.path.exists(mapping_path):
+            raise FileNotFoundError(f"Class mapping file not found at {mapping_path}")
+
+        self.classes, self.class_indices, self.class_names = [], [], []
+        with open(mapping_path, "r") as f:
+            for line in f:
+                wnid, index, class_name = line.strip().split()
+                self.classes.append(wnid)
+                self.class_indices.append(int(index) - 1)  # Convert to 0-based indexing
+                self.class_names.append(class_name)
+
+        # Sort by wnid
+        self.classes, self.class_indices, self.class_names = (list(x) for x in zip(*sorted(
+            zip(self.classes, self.class_indices, self.class_names),
+            key=lambda x: x[0]
+        )))
+
+
+    def _update_labels(self):
+        """
+        Updates the labels from class indices to class names using the loaded class mapping.
+        """
+        label_mapping = {k: v for k, v in zip(self.class_indices, self.classes)}
+        self.labels = [label_mapping[label] for label in self.labels]
+
+
+    def _initialize(self):
+        super()._initialize()
+        self.wnid2name = {wnid: name for wnid, name in zip(self.classes, self.class_names)}
