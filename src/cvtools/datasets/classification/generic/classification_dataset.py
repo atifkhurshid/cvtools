@@ -4,7 +4,7 @@ Generic dataloader for image classification tasks.
 
 # Author: Atif Khurshid
 # Created: 2022-12-18
-# Modified: 2026-03-27
+# Modified: 2026-04-08
 # Version: 1.3
 # Changelog:
 #     - 2025-06-18: Updated documentation and type hints.
@@ -12,6 +12,7 @@ Generic dataloader for image classification tasks.
 #     - 2026-03-03: Refactored code to use new image processing functions.
 #     - 2026-03-26: Refactored code to match updated base class.
 #     - 2026-03-27: Refactored code to match updated base class.
+#     - 2026-04-08: Refactored code to match updated base class.
 
 import os
 from pathlib import Path
@@ -19,11 +20,11 @@ from typing import Optional, Union
 
 import numpy as np
 
-from .._base import _ClassificationBaseImage, _ClassificationBaseHDF5
+from .._base import _ClassificationBaseImageHDF5
 from ....image import IMAGE_EXTENSIONS
 
 
-class ClassificationDataset(_ClassificationBaseImage, _ClassificationBaseHDF5):
+class ClassificationDataset(_ClassificationBaseImageHDF5):
 
     def __init__(
             self,
@@ -80,22 +81,20 @@ class ClassificationDataset(_ClassificationBaseImage, _ClassificationBaseHDF5):
         ...     # Process each image and label
         ...     pass
         """
+        super().__init__(
+            root_dir=root_dir,
+            hdf5_mode=hdf5_mode,
+            image_mode=image_mode,
+            image_scale=image_scale,
+            image_size=image_size,
+            preserve_aspect_ratio=preserve_aspect_ratio,
+            interpolation=interpolation
+        )
+        
         if exts == "auto":
             exts = IMAGE_EXTENSIONS
 
         if hdf5_mode is not None:
-
-            self._parent_class = _ClassificationBaseHDF5
-
-            _ClassificationBaseHDF5.__init__(
-                self,
-                root_dir=root_dir,
-                hdf5_mode=hdf5_mode,
-                image_scale=image_scale,
-                image_size=image_size,
-                preserve_aspect_ratio=preserve_aspect_ratio,
-                interpolation=interpolation
-            )
 
             self.root_dir = ""
             
@@ -109,18 +108,6 @@ class ClassificationDataset(_ClassificationBaseImage, _ClassificationBaseHDF5):
                 self.filenames.extend(filenames)
 
         else:
-
-            self._parent_class = _ClassificationBaseImage
-
-            _ClassificationBaseImage.__init__(
-                self,
-                root_dir=root_dir,
-                image_mode=image_mode,
-                image_scale=image_scale,
-                image_size=image_size,
-                preserve_aspect_ratio=preserve_aspect_ratio,
-                interpolation=interpolation
-            )
 
             root_dir_path = Path(self.root_dir)
 
@@ -160,8 +147,3 @@ class ClassificationDataset(_ClassificationBaseImage, _ClassificationBaseHDF5):
         image_path = os.path.join(self.root_dir, label, self.filenames[id])
 
         return image_path, label
-
-
-    def __getattr__(self, name):
-        return getattr(self._parent_class, name).__get__(self)
-    

@@ -4,8 +4,8 @@ Dataloader for NIH Chest X-Ray dataset: https://nihcc.app.box.com/v/ChestXray-NI
 
 # Author: Atif Khurshid
 # Created: 2025-05-20
-# Modified: 2026-03-27
-# Version: 2.4
+# Modified: 2026-04-08
+# Version: 2.5
 # Changelog:
 #     - 2025-05-22: Add image_size parameter for resizing images
 #     - 2025-05-22: Remove pytorch dependency and refactor code
@@ -16,22 +16,25 @@ Dataloader for NIH Chest X-Ray dataset: https://nihcc.app.box.com/v/ChestXray-NI
 #     - 2026-03-03: Refactored code to use new image processing functions.
 #     - 2026-03-26: Refactored code to match updated base class.
 #     - 2026-03-27: Refactored code to match updated base class.
+#     - 2026-04-08: Added support for images stored in an HDF5 file.
 
 import os
 from typing import Optional, Union
 
 import pandas as pd
 
-from .._base import _ClassificationBaseImage
+from .._base import _ClassificationBaseImageHDF5
 
 
-class CXRDataset(_ClassificationBaseImage):
+class CXRDataset(_ClassificationBaseImageHDF5):
+
     def __init__(
         self,
         root_dir: str,
         view: str = "AP",
         train: bool = True,
         class_mode: str = "singleclass",
+        hdf5_mode: Optional[str] = None,
         image_mode: str = "GRAY",
         image_scale: Optional[float] = None,
         image_size: Optional[Union[int, tuple[int, int]]] = None,
@@ -59,6 +62,9 @@ class CXRDataset(_ClassificationBaseImage):
             Mode for class labels. Can be "binary" (0 for 'No Finding', 1 for 'Finding'),
             "singleclass" (only the first label for samples with multiple labels),
             or "multiclass" (all labels as they are). Default is "singleclass".
+        hdf5_mode : str, optional
+            If specified, load images from the given HDF5 file instead of from images folder.
+             Default is None (load from images).
         image_mode : str, optional
             Mode to read images. Default is "GRAY" for grayscale images.
         image_scale : float, optional
@@ -96,6 +102,7 @@ class CXRDataset(_ClassificationBaseImage):
         """
         super().__init__(
             root_dir=root_dir,
+            hdf5_mode=hdf5_mode,
             image_mode=image_mode,
             image_scale=image_scale,
             image_size=image_size,
@@ -103,10 +110,14 @@ class CXRDataset(_ClassificationBaseImage):
             interpolation=interpolation
         )
 
-        self.images_dir = os.path.join(self.root_dir, 'images')
-        if not os.path.exists(self.images_dir):
-            raise FileNotFoundError(f"Directory {self.images_dir} does not exist.")
-        
+        if hdf5_mode:
+            self.images_dir = ""
+
+        else:
+            self.images_dir = os.path.join(self.root_dir, 'images')
+            if not os.path.exists(self.images_dir):
+                raise FileNotFoundError(f"Directory {self.images_dir} does not exist.")
+            
         # Load annotations file
         self.data = pd.read_csv(os.path.join(self.root_dir, 'Data_Entry_2017_v2020.csv'))
 

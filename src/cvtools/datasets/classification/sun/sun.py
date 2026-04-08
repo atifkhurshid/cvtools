@@ -4,7 +4,7 @@ Dataloader for Princeton SUN dataset: https://vision.princeton.edu/projects/2010
 
 # Author: Atif Khurshid
 # Created: 2025-05-23
-# Modified: 2026-03-27
+# Modified: 2026-04-08
 # Version: 1.3
 # Changelog:
 #     - 2026-03-03: Added option to load images from HDF5 file for faster loading.
@@ -13,6 +13,7 @@ Dataloader for Princeton SUN dataset: https://vision.princeton.edu/projects/2010
 #     - 2026-03-03: Added support for image scaling.
 #     - 2026-03-26: Refactored code to match updated base class.
 #     - 2026-03-27: Refactored code to match updated base class.
+#     - 2026-04-08: Refactored code to match updated base class.
 
 import os
 from typing import Optional, Union
@@ -20,11 +21,11 @@ from typing import Optional, Union
 import numpy as np
 import pandas as pd
 
-from .._base import _ClassificationBaseImage, _ClassificationBaseHDF5
+from .._base import _ClassificationBaseImageHDF5
 from ....utils import stratified_sampling_by_class
 
 
-class SUNDataset(_ClassificationBaseImage, _ClassificationBaseHDF5):
+class SUNDataset(_ClassificationBaseImageHDF5):
     def __init__(
             self,
             root_dir: str,
@@ -99,33 +100,22 @@ class SUNDataset(_ClassificationBaseImage, _ClassificationBaseHDF5):
         ...     pass
 
         """
-        if hdf5_mode:
+        super().__init__(
+            root_dir=root_dir,
+            hdf5_mode=hdf5_mode,
+            image_mode=image_mode,
+            image_scale=image_scale,
+            image_size=image_size,
+            preserve_aspect_ratio=preserve_aspect_ratio,
+            interpolation=interpolation,
+        )
 
-            self._parent_class = _ClassificationBaseHDF5
-            _ClassificationBaseHDF5.__init__(
-                self,
-                root_dir=root_dir,
-                hdf5_mode=hdf5_mode,
-                image_scale=image_scale,
-                image_size=image_size,
-                preserve_aspect_ratio=preserve_aspect_ratio,
-                interpolation=interpolation
-            )
+        if hdf5_mode:
             self.images_dir = ""
 
         else:
-            self._parent_class = _ClassificationBaseImage
-            _ClassificationBaseImage.__init__(
-                self,
-                root_dir=root_dir,
-                image_mode=image_mode,
-                image_scale=image_scale,
-                image_size=image_size,
-                preserve_aspect_ratio=preserve_aspect_ratio,
-                interpolation=interpolation
-            )
-
             self.images_dir = os.path.join(self.root_dir, "images")
+
             if not os.path.exists(self.images_dir):
                 raise FileNotFoundError(f"Directory {self.images_dir} does not exist.")
     
@@ -134,11 +124,13 @@ class SUNDataset(_ClassificationBaseImage, _ClassificationBaseHDF5):
 
         if train:
             filepaths_list_path = os.path.join(self.root_dir, 'metadata', f'Training_{splits[split_idx]}.txt')
+        
         else:
             filepaths_list_path = os.path.join(self.root_dir, 'metadata', f'Testing_{splits[split_idx]}.txt')
 
         # Read list of train images
         with open(filepaths_list_path, 'r') as f:
+            
             filepaths_list = f.read().split('\n')[:-1]    # Remove last empty row
 
         # Infer class from filepath
@@ -146,21 +138,28 @@ class SUNDataset(_ClassificationBaseImage, _ClassificationBaseHDF5):
         # Class is the 2nd (or possibly including 3rd part) of the filepath
         self.filepaths = []
         self.sun_labels = []
+
         for filepath in filepaths_list:
+
             parts = filepath.split("/")
+
             if len(parts) == 4:
                 self.sun_labels.append(parts[2])
+
             elif len(parts) == 5:
                 self.sun_labels.append(f"{parts[2]}/{parts[3]}")
+
             else:
                 print(f"WARNING: Filepath {filepath} will be skipped because class could not be inferred.")
                 continue
+
             self.filepaths.append(filepath[1:])    # Remove leading '/'
 
         assert len(self.filepaths) == len(self.sun_labels), "Number of filepaths and classes do not match."
 
         # Perform stratified sampling if n_samples is specified
         if n_samples > 0:
+
             self.filepaths, self.sun_labels = stratified_sampling_by_class(
                 np.array(self.filepaths),
                 np.array(self.sun_labels),
@@ -226,7 +225,3 @@ class SUNDataset(_ClassificationBaseImage, _ClassificationBaseHDF5):
         self.labels = self.labels_dict[class_hierarchy]
         self.classes = sorted(list(set(self.labels)))
         self._initialize()
-
-
-    def __getattr__(self, name):
-        return getattr(self._parent_class, name).__get__(self)
