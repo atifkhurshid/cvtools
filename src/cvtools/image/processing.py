@@ -4,8 +4,8 @@ Image processing module.
 
 # Author: Atif Khurshid
 # Created: 2022-12-18
-# Modified: 2026-03-04
-# Version: 1.7
+# Modified: 2026-04-08
+# Version: 1.8
 # Changelog:
 #     - 2025-05-22: Added fill and kwargs parameters to resize
 #     - 2025-05-22: Allowed resize without preserving aspect ratio
@@ -15,6 +15,7 @@ Image processing module.
 #     - 2026-03-03: Added imresize_maximum function
 #     - 2026-03-03: Added imscale function
 #     - 2026-03-04: Refactored image padding into a separate function.
+#     - 2026-04-08: Added imresize_minimum function.
 
 from math import ceil, floor
 
@@ -113,14 +114,14 @@ def imresize_maximum(
         interpolation: int = cv2.INTER_AREA,
     ) -> np.ndarray:
     """
-    Resize image while maintaining aspect ratio such that the longest side is at most max_size.
+    Resize image while maintaining aspect ratio such that the longest side is max_size.
 
     Parameters
     ----------
     img : ndarray
         Input image to resize, must be a numpy array.
     max_size : int
-        Desired maximum size of the longest side of the output image.
+        Desired size of the longest side of the output image.
     interpolation : int, optional
         Interpolation method used for resizing, default is cv2.INTER_AREA.
 
@@ -138,10 +139,47 @@ def imresize_maximum(
     """
     H, W = img.shape[:2]
     
-    if max(H, W) > max_size:
-        scale = max_size / max(H, W)
-        new_size = (int(W * scale), int(H * scale)) # (width, height)
-        img = cv2.resize(img, new_size, interpolation=interpolation)
+    scale = max_size / max(H, W)
+    new_size = (int(W * scale), int(H * scale)) # (width, height)
+    img = cv2.resize(img, new_size, interpolation=interpolation)
+
+    return img
+
+
+def imresize_minimum(
+        img: np.ndarray,
+        min_size: int,
+        interpolation: int = cv2.INTER_AREA,
+    ) -> np.ndarray:
+    """
+    Resize image while maintaining aspect ratio such that the shortest side is min_size.
+
+    Parameters
+    ----------
+    img : ndarray
+        Input image to resize, must be a numpy array.
+    min_size : int
+        Desired size of the shortest side of the output image.
+    interpolation : int, optional
+        Interpolation method used for resizing, default is cv2.INTER_AREA.
+
+    Returns
+    -------
+    np.ndarray
+        Resized image as a numpy array.
+
+    Examples
+    --------
+    >>> from cvtools.image import imresize_minimum
+    >>> import numpy as np
+    >>> img = np.random.randint(0, 256, (300, 400, 3), dtype=np.uint8)
+    >>> resized_img = imresize_minimum(img, 200)
+    """
+    H, W = img.shape[:2]
+    
+    scale = min_size / min(H, W)
+    new_size = (int(W * scale), int(H * scale)) # (width, height)
+    img = cv2.resize(img, new_size, interpolation=interpolation)
 
     return img
 
