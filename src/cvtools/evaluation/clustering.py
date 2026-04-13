@@ -26,11 +26,11 @@ from sklearn.metrics import fowlkes_mallows_score
 from sklearn.metrics import adjusted_mutual_info_score
 from sklearn.metrics import pairwise_distances_argmin
 
-from .metrics import clustering_accuracy
-from .metrics import clustering_f_measure
-from .metrics import clustering_purity
-from .metrics import maximum_cluster_assignment_score
-from .metrics import silhouette_score
+from ..metrics import clustering_accuracy
+from ..metrics import clustering_f_measure
+from ..metrics import clustering_purity
+from ..metrics import maximum_cluster_assignment_score
+from ..metrics import silhouette_score
 
 
 def evaluate_clustering(

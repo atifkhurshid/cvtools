@@ -17,7 +17,7 @@ from typing import Optional, Union
 import numpy as np
 from sklearn.metrics import classification_report, confusion_matrix
 
-from .metrics import compute_roc
+from ..metrics import compute_roc
 from ..visualization import plot_roc_curves
 from ..visualization import display_confusion_matrix
 

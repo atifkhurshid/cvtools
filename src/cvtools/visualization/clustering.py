@@ -19,8 +19,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 
-from ..evaluation.metrics import intra_cluster_variability
-from ..evaluation.metrics import inter_cluster_variability
+from ..metrics import intra_cluster_variability
+from ..metrics import inter_cluster_variability
 
 
 def visualize_cluster_variability(

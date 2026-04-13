@@ -39,7 +39,7 @@ from sklearn.metrics import classification_report
 from .base import PyTorchModel
 from ...utils.pytorch import InfiniteDataLoader
 from ...utils.pytorch import EarlyStopping
-from ...evaluation.metrics import compute_roc
+from ...metrics import compute_roc
 
 
 def extract_features(
