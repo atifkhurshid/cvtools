@@ -4,12 +4,13 @@ Base class for PyTorch models.
 
 # Author: Atif Khurshid
 # Created: 2025-06-22
-# Modified: 2026-03-05
-# Version: 2.1
+# Modified: 2026-04-16
+# Version: 2.2
 # Changelog:
 #     - 2025-08-29: Added training and evaluation steps.
 #     - 2025-09-04: Added scheduler support.
 #     - 2026-03-05: Added support for returning logits for evaluation.
+#     - 2026-04-16: Added support for non-blocking transfers to device.
 
 from typing import Optional
 
@@ -33,6 +34,7 @@ class PyTorchModel(nn.Module):
         self.scheduler: Optional[LRScheduler]
         self.metric: Metric
         self.device: str
+        self.non_blocking: bool
 
         self.configured: bool = False
         self.training_samples_seen: int = 0
@@ -45,6 +47,7 @@ class PyTorchModel(nn.Module):
             metric: Metric,
             scheduler: Optional[LRScheduler] = None,
             device: str = "cpu",
+            non_blocking: bool = False,
         ):
         """
         Configure the model with the given loss, optimizer, and metric.
@@ -61,12 +64,15 @@ class PyTorchModel(nn.Module):
             The learning rate scheduler to use, by default None.
         device : str, optional
             The device to use, by default "cpu".
+        non_blocking : bool, optional
+            Whether to use non-blocking transfers to the device, by default False.
         """
         self.loss = loss
         self.optimizer = optimizer
         self.scheduler = scheduler
         self.metric = metric
         self.device = device
+        self.non_blocking = non_blocking
         self.configured = True
 
 
@@ -91,8 +97,8 @@ class PyTorchModel(nn.Module):
 
         self.optimizer.zero_grad()
 
-        X = X.to(self.device)
-        y = y.to(self.device)
+        X = X.to(self.device, non_blocking=self.non_blocking)
+        y = y.to(self.device, non_blocking=self.non_blocking)
 
         outputs = self.forward(X)
 
@@ -134,8 +140,8 @@ class PyTorchModel(nn.Module):
         if not self.configured:
             raise RuntimeError("Model is not configured for inference.")
 
-        X = X.to(self.device)
-        y = y.to(self.device)
+        X = X.to(self.device, non_blocking=self.non_blocking)
+        y = y.to(self.device, non_blocking=self.non_blocking)
 
         outputs = self.forward(X)
 
