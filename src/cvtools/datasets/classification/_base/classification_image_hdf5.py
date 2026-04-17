@@ -4,10 +4,11 @@ Base class for classification datasets sourced from both image and HDF5 files.
 
 # Author: Atif Khurshid
 # Created: 2026-04-08
-# Modified: None
+# Modified: 2026-04-17
 # Version: 1.0
 # Changelog:
 #     - 2026-04-08: Created base class for datasets sourced from both image and HDF5 files.
+#     - 2026-04-17: Aligned with updated base class.
 
 from typing import Optional, Union
 
@@ -24,6 +25,7 @@ class _ClassificationBaseImageHDF5(_ClassificationBaseImage, _ClassificationBase
             self,
             root_dir: str,
             hdf5_mode: Optional[str] = None,
+            hdf5_path: Optional[str] = "images.hdf5",
             image_mode: Union[str, int] = 'RGB',
             image_scale: Optional[float] = None,
             image_size: Optional[Union[int, tuple[int, int]]] = None,
@@ -40,6 +42,8 @@ class _ClassificationBaseImageHDF5(_ClassificationBaseImage, _ClassificationBase
         hdf5_mode : str, optional
             If "stream", load images from an HDF5 file on-the-fly.
             If "preload", preload all images from the HDF5 file into memory. Default is None (load from files).
+        hdf5_path : str, optional
+            Path to the HDF5 file within the root directory. Default is "images.hdf5".
         image_mode : str | int, optional
             Mode to read images. Can be 'RGB', 'GRAY', or a cv2.IMREAD_... flag. Default is 'RGB'.
         image_scale : float, optional
@@ -62,6 +66,7 @@ class _ClassificationBaseImageHDF5(_ClassificationBaseImage, _ClassificationBase
                 self,
                 root_dir=root_dir,
                 hdf5_mode=hdf5_mode,
+                hdf5_path=hdf5_path,
                 image_scale=image_scale,
                 image_size=image_size,
                 preserve_aspect_ratio=preserve_aspect_ratio,

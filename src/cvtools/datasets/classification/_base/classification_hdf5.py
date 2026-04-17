@@ -4,10 +4,11 @@ Base class for classification datasets sourced from HDF5 file.
 
 # Author: Atif Khurshid
 # Created: 2026-03-27
-# Modified: None
-# Version: 1.0
+# Modified: 2026-04-17
+# Version: 1.1
 # Changelog:
 #     - 2026-03-27: Refactored base class into separate base classes for image-based and HDF5-based datasets.
+#     - 2026-04-17: Allowed custom HDF5 file paths
 
 from typing import Optional, Union
 
@@ -27,6 +28,7 @@ class _ClassificationBaseHDF5(_ClassificationBase):
             self,
             root_dir: str,
             hdf5_mode: Optional[str] = None,
+            hdf5_path: Optional[str] = "images.hdf5",
             image_scale: Optional[float] = None,
             image_size: Optional[Union[int, tuple[int, int]]] = None,
             preserve_aspect_ratio: bool = True,
@@ -41,7 +43,9 @@ class _ClassificationBaseHDF5(_ClassificationBase):
             Path to the root directory containing class subdirectories or HDF5 file.
         hdf5_mode : str, optional
             If "stream", load images from an HDF5 file on-the-fly.
-            If "preload", preload all images from the HDF5 file into memory. Default is None (load from files).
+            If "preload", preload all images from the HDF5 file into memory. Default is None (load from files).        
+        hdf5_path : str, optional
+            Path to the HDF5 file within the root directory. Default is "images.hdf5".
         image_scale : float, optional
             Scale factor to resize images. Default is None (no scaling).
         image_size : int | tuple, optional
@@ -68,9 +72,10 @@ class _ClassificationBaseHDF5(_ClassificationBase):
         )
 
         self.hdf5_mode = hdf5_mode
+        self.hdf5_path = hdf5_path
         self._read_image = self._read_image_from_hdf5
 
-        images_file_path = os.path.join(self.root_dir, "images.hdf5")
+        images_file_path = os.path.join(self.root_dir, self.hdf5_path)
 
         if self.hdf5_mode == "stream":
 

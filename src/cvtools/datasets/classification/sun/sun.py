@@ -4,8 +4,8 @@ Dataloader for Princeton SUN dataset: https://vision.princeton.edu/projects/2010
 
 # Author: Atif Khurshid
 # Created: 2025-05-23
-# Modified: 2026-04-08
-# Version: 1.3
+# Modified: 2026-04-17
+# Version: 1.4
 # Changelog:
 #     - 2026-03-03: Added option to load images from HDF5 file for faster loading.
 #     - 2026-03-03: Enabled dynamic changes in class hierarchy after initialization.
@@ -14,6 +14,7 @@ Dataloader for Princeton SUN dataset: https://vision.princeton.edu/projects/2010
 #     - 2026-03-26: Refactored code to match updated base class.
 #     - 2026-03-27: Refactored code to match updated base class.
 #     - 2026-04-08: Refactored code to match updated base class.
+#     - 2026-04-17: Allowed custom hdf5 file path.
 
 import os
 from typing import Optional, Union
@@ -26,6 +27,7 @@ from ....utils import stratified_sampling_by_class
 
 
 class SUNDataset(_ClassificationBaseImageHDF5):
+    
     def __init__(
             self,
             root_dir: str,
@@ -34,6 +36,7 @@ class SUNDataset(_ClassificationBaseImageHDF5):
             split_idx: int = 0,
             n_samples: int = 0,
             hdf5_mode: Optional[str] = None,
+            hdf5_path: Optional[str] = "images.hdf5",
             image_mode: str = 'RGB',
             image_scale: Optional[float] = None,
             image_size: Optional[Union[int, tuple[int, int]]] = None,
@@ -64,6 +67,8 @@ class SUNDataset(_ClassificationBaseImageHDF5):
         hdf5_mode : str, optional
             If "stream", load images from an HDF5 file on-the-fly.
             If "preload", preload all images from the HDF5 file into memory. Default is None (load from files).
+        hdf5_path : str, optional
+            Path to the HDF5 file within the root directory. Default is "images.hdf5".
         image_scale : float, optional
             Scale factor to resize images. Default is None (no scaling).
         image_size : int | tuple, optional
@@ -103,6 +108,7 @@ class SUNDataset(_ClassificationBaseImageHDF5):
         super().__init__(
             root_dir=root_dir,
             hdf5_mode=hdf5_mode,
+            hdf5_path=hdf5_path,
             image_mode=image_mode,
             image_scale=image_scale,
             image_size=image_size,
