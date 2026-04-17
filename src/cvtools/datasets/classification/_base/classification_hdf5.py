@@ -9,6 +9,7 @@ Base class for classification datasets sourced from HDF5 file.
 # Changelog:
 #     - 2026-03-27: Refactored base class into separate base classes for image-based and HDF5-based datasets.
 #     - 2026-04-17: Allowed custom HDF5 file paths
+#     - 2026-04-17: Added support for per-worker hdf5 file handles.
 
 from typing import Optional, Union
 
@@ -75,16 +76,16 @@ class _ClassificationBaseHDF5(_ClassificationBase):
         self.hdf5_path = hdf5_path
         self._read_image = self._read_image_from_hdf5
 
-        images_file_path = os.path.join(self.root_dir, self.hdf5_path)
+        self.images_file_path = os.path.join(self.root_dir, self.hdf5_path)
 
         if self.hdf5_mode == "stream":
 
-            self.images_file = h5py.File(images_file_path, "r")
+            self.images_file = None
 
         elif self.hdf5_mode == "preload":
 
             self.images_file = {}
-            with h5py.File(images_file_path, "r") as f:
+            with h5py.File(self.images_file_path, "r") as f:
                 self._preload_hdf5_images(f, self.images_file)
 
 
@@ -102,6 +103,10 @@ class _ClassificationBaseHDF5(_ClassificationBase):
         np.ndarray
             The image as a numpy array.
         """
+        # Allow each worker process to have its own file handle when in "stream" mode.
+        if self.images_file is None:
+            self.images_file = h5py.File(self.images_file_path, "r")
+
         image = self.images_file[path][:]
         
         return image
@@ -121,12 +126,15 @@ class _ClassificationBaseHDF5(_ClassificationBase):
             The prefix to add to the keys in the images_dict. Default is "".
         """
         for key, item in group.items():
+
             if prefix:
                 path = f"{prefix}/{key}"
             else:
                 path = key
+
             if isinstance(item, h5py.Dataset):
                 images_dict[path] = item[:]
+                
             elif isinstance(item, h5py.Group):
                 self._preload_hdf5_images(item, images_dict, path)
 
