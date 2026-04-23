@@ -324,7 +324,7 @@ def train_classification_model(
             epoch_metric_val = []
 
             for i, (X, y) in tqdm(
-                    enumerate(train_dataloader),
+                    enumerate(train_dataloader, start=1),
                     total=len(train_dataloader),
                     desc=f"Epoch {epoch}/{epochs}",
                     disable = not verbose,
