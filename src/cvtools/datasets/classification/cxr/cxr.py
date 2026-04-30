@@ -4,8 +4,8 @@ Dataloader for NIH Chest X-Ray dataset: https://nihcc.app.box.com/v/ChestXray-NI
 
 # Author: Atif Khurshid
 # Created: 2025-05-20
-# Modified: 2026-04-08
-# Version: 2.5
+# Modified: 2026-04-30
+# Version: 2.6
 # Changelog:
 #     - 2025-05-22: Add image_size parameter for resizing images
 #     - 2025-05-22: Remove pytorch dependency and refactor code
@@ -17,10 +17,13 @@ Dataloader for NIH Chest X-Ray dataset: https://nihcc.app.box.com/v/ChestXray-NI
 #     - 2026-03-26: Refactored code to match updated base class.
 #     - 2026-03-27: Refactored code to match updated base class.
 #     - 2026-04-08: Added support for images stored in an HDF5 file.
+#     - 2026-04-30: Added support for multiclass classification.
+#     - 2026-04-30: Added class hierarchy based on RadLex ontology.
 
 import os
 from typing import Optional, Union
 
+import numpy as np
 import pandas as pd
 
 from .._base import _ClassificationBaseImageHDF5
@@ -117,7 +120,9 @@ class CXRDataset(_ClassificationBaseImageHDF5):
             self.images_dir = os.path.join(self.root_dir, 'images')
             if not os.path.exists(self.images_dir):
                 raise FileNotFoundError(f"Directory {self.images_dir} does not exist.")
-            
+
+        self._create_radlex_hierarchy()
+
         # Load annotations file
         self.data = pd.read_csv(os.path.join(self.root_dir, 'Data_Entry_2017_v2020.csv'))
 
@@ -147,17 +152,33 @@ class CXRDataset(_ClassificationBaseImageHDF5):
         assert class_mode in ["binary", "singleclass", "multiclass"], \
             f"Invalid class_mode: {class_mode}. Must be 'binary', 'singleclass', or 'multiclass'."
         
-        if class_mode == "binary":
-            # Convert the multiclass textual labels to binary
-            # 0 for 'No Finding' and 1 for 'Finding'
-            self.data['Finding Labels'] = self.data['Finding Labels'].apply(
-                lambda x: "Normal" if x == 'No Finding' else "Abnormal")
-        elif class_mode == "singleclass":
-            # For samples with multiple labels, take only the first label as the class label
-            self.data['Finding Labels'] = self.data['Finding Labels'].str.split('|').str[0]
+        if class_mode is not "multiclass":
 
-        self.labels = self.data['Finding Labels'].tolist()
-        self.classes = sorted(self.data['Finding Labels'].unique().tolist())
+            if class_mode == "binary":
+                # Convert the multiclass textual labels to binary
+                # 0 for 'No Finding' and 1 for 'Finding'
+                self.data['Finding Labels'] = self.data['Finding Labels'].apply(
+                    lambda x: "Normal" if x == 'No Finding' else "Abnormal")
+                
+            elif class_mode == "singleclass":
+                # For samples with multiple labels, take only the first label as the class label
+                self.data['Finding Labels'] = self.data['Finding Labels'].str.split('|').str[0]
+
+            self.labels = self.data['Finding Labels'].tolist()
+            self.classes = sorted(self.data['Finding Labels'].unique().tolist())
+
+        else: 
+            # For multiclass, sample label is a list of all labels for that sample
+            self.labels = self.data["Finding Labels"].str.split("|").tolist()
+            self.classes = sorted(set(
+                label for labels in self.labels for label in labels
+            ))
+            # Ensure "No Finding" is the first class
+            self.classes = ["No Finding"] + [c for c in self.classes if c != "No Finding"]
+
+            # Change class-index mappings to handle multiclass labels (lists of labels)
+            self.class_name_to_index = self._multiclass_class_name_to_index
+            self.index_to_class_name = self._multiclass_index_to_class_name
 
         self._initialize()
 
@@ -184,3 +205,97 @@ class CXRDataset(_ClassificationBaseImageHDF5):
         label = self.labels[index]
 
         return image_path, label
+
+
+    def _multiclass_class_name_to_index(self, x: list[str]) -> np.ndarray:
+        """
+        Convert a list of class names to a list of class indices for multiclass classification.
+
+        Parameters
+        ----------
+        x : list[str]
+            A list of class names.
+
+        Returns
+        -------
+        np.ndarray
+            A list of class indices corresponding to the input class names.
+        """
+        return np.array([self.class2index[label] for label in x])
+    
+
+    def _multiclass_index_to_class_name(self, x: np.ndarray) -> np.ndarray:
+        """
+        Convert a list of class indices to a list of class names for multiclass classification.
+
+        Parameters
+        ----------
+        x : np.ndarray
+            A list of class indices.
+
+        Returns
+        -------
+        np.ndarray
+            A list of class names corresponding to the input class indices.
+        """
+        return np.array([self.index2class[idx] for idx in x])
+
+
+    def _create_radlex_hierarchy(self) -> None:
+        """
+        Create a hierarchical structure of the class labels based on the RadLex ontology.
+        """
+        self.hierarchy = {
+            "Clinical finding": {
+                "Pathophysiologic finding": {
+                    "Body-system-specific disorder": {
+                        "Respiratory disorder": ["Pneumonia", "Pneumothorax"],
+                    },
+                    "Growth disorder": {
+                        "Physiologic repair": ["Fibrosis"],
+                        "Thickening": ["Pleural_Thickening"],
+                    },
+                    "Mechanical disorder": {
+                        "Architectural distortion": {
+                            "Collapse": ["Atelectasis"],
+                        },
+                        "Displacement": {
+                            "Displaced substance": {
+                                "Consolidation": ["Consolidation"],
+                                "Displaced gas": ["Emphysema"],
+                            },
+                        },
+                        "Fluid disorder": ["Edema", "Effusion"],
+                        "Hernia": ["Hernia"],
+                    },
+                },
+            },
+            "Imaging observation": {
+                "Enhancement pattern": {
+                    "Invasion enhancement pattern": ["Infiltration"],
+                },
+                "Imaging sign": ["Cardiomegaly"],
+                "Lesion": ["Mass", "Nodule"],
+            },
+        }
+
+
+    def visualize_hierarchy(self) -> None:
+        """
+        Visualize the hierarchical structure of the class labels.
+        """
+        classes, counts = np.unique(self.labels, return_counts=True)
+        label_counts = dict(zip(classes, counts))
+
+        def print_tree(node, indent=0, prefix=""):
+            if isinstance(node, dict):
+                for i, (key, value) in enumerate(node.items()):
+                    is_last = i == len(node) - 1
+                    extension = "└── " if is_last else "├── "
+                    print(prefix + extension + str(key))
+                    print_tree(value, indent + 1, prefix + ("    " if is_last else "│   "))
+            else:
+                for item in node:
+                    print(prefix + "└── " + str(item) + f" ({label_counts.get(item, 0)})")
+
+        print_tree(self.hierarchy)
