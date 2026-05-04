@@ -4,14 +4,15 @@ Base class for PyTorch models.
 
 # Author: Atif Khurshid
 # Created: 2025-06-22
-# Modified: 2026-04-17
-# Version: 2.3
+# Modified: 2026-05-04
+# Version: 2.4
 # Changelog:
 #     - 2025-08-29: Added training and evaluation steps.
 #     - 2025-09-04: Added scheduler support.
 #     - 2026-03-05: Added support for returning logits for evaluation.
 #     - 2026-04-16: Added support for non-blocking transfers to device.
 #     - 2026-04-17: Added support for on-GPU preprocessing.
+#     - 2026-05-04: Added support for multi-label classification.
 
 from typing import Optional
 
@@ -34,10 +35,11 @@ class PyTorchModel(nn.Module):
         self.optimizer: Optimizer
         self.metric: Metric
         self.scheduler: Optional[LRScheduler]
+        self.multilabel: bool
         self.device: str
         self.non_blocking: bool
-        self.preprocess_train: Optional[nn.Module]
-        self.preprocess_test: Optional[nn.Module]
+        self.preprocess_train: nn.Module
+        self.preprocess_test: nn.Module
 
         self.configured: bool = False
         self.training_samples_seen: int = 0
@@ -49,6 +51,7 @@ class PyTorchModel(nn.Module):
             optimizer: Optimizer,
             metric: Metric,
             scheduler: Optional[LRScheduler] = None,
+            multilabel: bool = False,
             device: str = "cpu",
             non_blocking: bool = False,
             preprocess_train: Optional[nn.Module] = None,
@@ -67,6 +70,8 @@ class PyTorchModel(nn.Module):
             The metric to use for evaluation.
         scheduler : torch.optim.lr_scheduler.LRScheduler, optional
             The learning rate scheduler to use, by default None.
+        multilabel : bool, optional
+            Whether the task is multi-label, by default False.
         device : str, optional
             The device to use, by default "cpu".
         non_blocking : bool, optional
@@ -80,10 +85,11 @@ class PyTorchModel(nn.Module):
         self.optimizer = optimizer
         self.scheduler = scheduler
         self.metric = metric
+        self.multilabel = multilabel
         self.device = device
         self.non_blocking = non_blocking
-        self.preprocess_train = preprocess_train
-        self.preprocess_test = preprocess_test
+        self.preprocess_train = preprocess_train if preprocess_train is not None else nn.Identity()
+        self.preprocess_test = preprocess_test if preprocess_test is not None else nn.Identity()
 
         self.configured = True
 
@@ -108,8 +114,7 @@ class PyTorchModel(nn.Module):
 
         X, y = self.prepare_step(X, y)
 
-        if self.preprocess_train is not None:
-            X = self.preprocess_train(X)
+        X = self.preprocess_train(X)
 
         outputs = self.forward(X)
 
@@ -150,14 +155,18 @@ class PyTorchModel(nn.Module):
         """
         X, y = self.prepare_step(X, y)
 
-        if self.preprocess_test is not None:
-            X = self.preprocess_test(X)
+        X = self.preprocess_test(X)
 
         outputs = self.forward(X)
 
         loss = self.compute_loss(outputs, y)
 
-        _, preds = torch.max(outputs, 1)
+        if self.multilabel:
+            probs = torch.sigmoid(outputs)
+            preds = (probs > 0.5).float()
+        else:
+            _, preds = torch.max(outputs, 1)
+
         preds = preds.detach().cpu()
 
         self.metric.update(outputs, y)
