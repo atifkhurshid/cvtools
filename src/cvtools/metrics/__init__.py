@@ -6,3 +6,6 @@ from .clustering import intra_cluster_variability
 from .clustering import inter_cluster_variability
 from .clustering import silhouette_score
 from .classification import compute_roc
+from .classification import multilabel_auc
+from .classification import multilabel_accuracy
+from .classification import compute_multilabel_roc
