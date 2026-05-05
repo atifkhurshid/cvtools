@@ -4,8 +4,8 @@ Dataloader for NIH Chest X-Ray dataset: https://nihcc.app.box.com/v/ChestXray-NI
 
 # Author: Atif Khurshid
 # Created: 2025-05-20
-# Modified: 2026-04-30
-# Version: 2.6
+# Modified: 2026-05-05
+# Version: 2.7
 # Changelog:
 #     - 2025-05-22: Add image_size parameter for resizing images
 #     - 2025-05-22: Remove pytorch dependency and refactor code
@@ -19,6 +19,7 @@ Dataloader for NIH Chest X-Ray dataset: https://nihcc.app.box.com/v/ChestXray-NI
 #     - 2026-04-08: Added support for images stored in an HDF5 file.
 #     - 2026-04-30: Added support for multiclass classification.
 #     - 2026-04-30: Added class hierarchy based on RadLex ontology.
+#     - 2026-05-05: Added option to balance classes by undersampling the majority class.
 
 import os
 from typing import Optional, Union
@@ -36,7 +37,8 @@ class CXRDataset(_ClassificationBaseImageHDF5):
         root_dir: str,
         view: str = "AP",
         train: bool = True,
-        class_mode: str = "singleclass",
+        class_mode: str = "multilabel",
+        balanced_classes: bool = False,
         hdf5_mode: Optional[str] = None,
         image_mode: str = "GRAY",
         image_scale: Optional[float] = None,
@@ -64,7 +66,10 @@ class CXRDataset(_ClassificationBaseImageHDF5):
         class_mode : str, optional
             Mode for class labels. Can be "binary" (0 for 'No Finding', 1 for 'Finding'),
             "singleclass" (only the first label for samples with multiple labels),
-            or "multiclass" (all labels as they are). Default is "singleclass".
+            or "multilabel" (all labels as they are). Default is "singleclass".
+        balanced_classes : bool, optional
+            If True, balance the classes by undersampling the majority class. Default is False.
+            Not applicable for multilabel classification.
         hdf5_mode : str, optional
             If specified, load images from the given HDF5 file instead of from images folder.
              Default is None (load from images).
@@ -149,10 +154,10 @@ class CXRDataset(_ClassificationBaseImageHDF5):
         # Reset the index of the DataFrame to ensure it is sequential
         self.data = self.data.reset_index(drop=True)
 
-        assert class_mode in ["binary", "singleclass", "multiclass"], \
-            f"Invalid class_mode: {class_mode}. Must be 'binary', 'singleclass', or 'multiclass'."
+        assert class_mode in ["binary", "singleclass", "multilabel"], \
+            f"Invalid class_mode: {class_mode}. Must be 'binary', 'singleclass', or 'multilabel'."
         
-        if class_mode is not "multiclass":
+        if class_mode != "multilabel":
 
             if class_mode == "binary":
                 # Convert the multiclass textual labels to binary
@@ -164,17 +169,28 @@ class CXRDataset(_ClassificationBaseImageHDF5):
                 # For samples with multiple labels, take only the first label as the class label
                 self.data['Finding Labels'] = self.data['Finding Labels'].str.split('|').str[0]
 
+            if balanced_classes:
+                # Balance the classes by undersampling the majority class
+                min_count = self.data['Finding Labels'].value_counts().min()
+                self.data = (
+                    self.data.groupby('Finding Labels', group_keys=False)
+                    .apply(lambda x: x.sample(min_count, random_state=42))
+                    .reset_index(drop=True)
+                )
+
             self.labels = self.data['Finding Labels'].tolist()
             self.classes = sorted(self.data['Finding Labels'].unique().tolist())
 
         else: 
-            # For multiclass, sample label is a list of all labels for that sample
-            self.labels = self.data["Finding Labels"].str.split("|").tolist()
+            # For multiclass, sample label is a list of all labels for that sample, exluding "No Finding"
+            self.labels = (
+                self.data["Finding Labels"]
+                .str.split("|")
+                .apply(lambda labels: [l for l in labels if l != "No Finding"])
+            ).tolist()
             self.classes = sorted(set(
                 label for labels in self.labels for label in labels
             ))
-            # Ensure "No Finding" is the first class
-            self.classes = ["No Finding"] + [c for c in self.classes if c != "No Finding"]
 
             # Change class-index mappings to handle multiclass labels (lists of labels)
             self.class_name_to_index = self._multiclass_class_name_to_index
