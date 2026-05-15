@@ -36,7 +36,7 @@ class PyTorchModel(nn.Module):
         self.metric: Metric
         self.scheduler: Optional[LRScheduler]
         self.multilabel: bool
-        self.device: str
+        self.device: torch.device
         self.non_blocking: bool
         self.preprocess_train: nn.Module
         self.preprocess_test: nn.Module
@@ -52,7 +52,7 @@ class PyTorchModel(nn.Module):
             metric: Metric,
             scheduler: Optional[LRScheduler] = None,
             multilabel: bool = False,
-            device: str = "cpu",
+            device: torch.device = torch.device("cpu"),
             non_blocking: bool = False,
             preprocess_train: Optional[nn.Module] = None,
             preprocess_test: Optional[nn.Module] = None,
@@ -72,8 +72,8 @@ class PyTorchModel(nn.Module):
             The learning rate scheduler to use, by default None.
         multilabel : bool, optional
             Whether the task is multi-label, by default False.
-        device : str, optional
-            The device to use, by default "cpu".
+        device : torch.device, optional
+            The device to use, by default torch.device("cpu").
         non_blocking : bool, optional
             Whether to use non-blocking transfers to the device, by default False.
         preprocess_train : nn.Module, optional

@@ -4,13 +4,14 @@ Metrics for evaluating classification models.
 
 # Author: Atif Khurshid
 # Created: 2026-03-05
-# Modified: 2026-05-05
-# Version: 1.2
+# Modified: 2026-05-13
+# Version: 1.3
 # Changelog:
 #     - 2026-03-05: Added ROC curve and AUC score computation.
 #     - 2026-03-12: Added n_interp_points parameter to compute_roc function.
 #     - 2026-03-12: Added interpolation of roc curve for micro weighted average.
 #     - 2026-05-05: Added multilabel metrics.
+#     - 2026-05-13: Implemented interpolation of all ROC cruves for reduced number of points.
 
 from typing import Optional
 
@@ -66,7 +67,7 @@ def compute_roc(
 
     else:
         probs = torch.softmax(torch.from_numpy(outputs), dim=1).numpy()
-        labels_binarized = label_binarize(labels, classes=classes)
+        labels_binarized = label_binarize(labels, classes=np.arange(len(classes)))
 
         support = np.sum(labels_binarized, axis=0)
         weights = support / np.sum(support)
@@ -80,13 +81,19 @@ def compute_roc(
         tpr["macro"] = np.zeros_like(fpr["macro"])
         tpr["weighted"] = np.zeros_like(fpr["weighted"])
 
-        for i in range(len(classes)):
+        for i, c in enumerate(classes):
 
-            fpr[i], tpr[i], thresholds[i] = roc_curve(labels_binarized[:, i], probs[:, i])
-            auc_score[i] = auc(fpr[i], tpr[i])
+            fpr[c], tpr[c], thresholds[c] = roc_curve(labels_binarized[:, i], probs[:, i])
+            auc_score[c] = auc(fpr[c], tpr[c])
+
             # Interpolate TPR at common FPR points
-            tpr["macro"] += np.interp(fpr["macro"], fpr[i], tpr[i])
-            tpr["weighted"] += weights[i] * np.interp(fpr["weighted"], fpr[i], tpr[i])
+            tpr[c] = np.interp(fpr["macro"], fpr[c], tpr[c])
+            thresholds[c] = np.interp(fpr["macro"], fpr[c], thresholds[c])
+            fpr[c] = fpr["macro"]
+
+            # Update macro and weighted TPR
+            tpr["macro"] += np.interp(fpr["macro"], fpr[c], tpr[c])
+            tpr["weighted"] += weights[i] * np.interp(fpr["weighted"], fpr[c], tpr[c])
         
         tpr["macro"] /= len(classes)
 
@@ -157,6 +164,11 @@ def compute_multilabel_roc(
         auc_score[c] = auc(fpr[c], tpr[c])
 
         # Interpolate TPR at common FPR points
+        tpr[c] = np.interp(fpr["macro"], fpr[c], tpr[c])
+        thresholds[c] = np.interp(fpr["macro"], fpr[c], thresholds[c])
+        fpr[c] = fpr["macro"]
+
+        # Update macro and weighted TPR
         tpr["macro"] += np.interp(fpr["macro"], fpr[c], tpr[c])
         tpr["weighted"] += weights[i] * np.interp(fpr["weighted"], fpr[c], tpr[c])
 
