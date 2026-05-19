@@ -4,14 +4,15 @@ Evaluation functions for classification models.
 
 # Author: Atif Khurshid
 # Created: 2025-06-22
-# Modified: 2026-05-05
-# Version: 1.5
+# Modified: 2026-05-19
+# Version: 1.6
 # Changelog:
 #     - 2025-08-01: Added documentation and type hints.
 #     - 2025-08-18: Improved confusion matrix plotting.
 #     - 2025-10-16: Added save functionality for confusion matrix figure.
 #     - 2026-03-05: Added ROC curve plotting.
 #     - 2026-05-05: Added multilabel classification evaluation.
+#     - 2026-05-19: Added option to prevent printing the classification report.
 
 from typing import Optional, Union
 
@@ -31,7 +32,8 @@ def evaluate_classification(
         class_names: Optional[list] = None,
         confusion: bool = True,
         roc: bool = True,
-        report: bool = False,
+        print_report: bool = True,
+        return_report: bool = False,
         figsize: tuple[int, int] = (10, 8),
         save_path: Optional[str] = None,
         save_dpi: int = 600,
@@ -58,7 +60,9 @@ def evaluate_classification(
         Whether to display the confusion matrix. Default is True.
     roc : bool, optional
         Whether to compute and display ROC curves for each class. Default is True.
-    report : bool, optional
+    print_report : bool, optional
+        Whether to print the classification report. Default is True.
+    return_report : bool, optional
         Whether to return the classification report as a dictionary. Default is False.
     figsize : tuple, optional
         Size of the confusion matrix plot. Default is (10, 8).
@@ -91,10 +95,11 @@ def evaluate_classification(
     if class_names is None:
         class_names = [str(i) for i in range(len(np.unique(y_true)))]
 
-    print(classification_report(
-        y_true, y_pred, target_names=class_names,
-        digits=digits, zero_division=zero_division, **kwargs
-    ))
+    if print_report:
+        print(classification_report(
+            y_true, y_pred, target_names=class_names,
+            digits=digits, zero_division=zero_division, **kwargs
+        ))
 
     if confusion:
         confusion = confusion_matrix(y_true, y_pred)
@@ -136,7 +141,7 @@ def evaluate_classification(
             save_format = save_format,
         )
 
-    if report:
+    if return_report:
         report = classification_report(
             y_true, y_pred, target_names=class_names, digits=digits,
             zero_division=zero_division, output_dict=True, **kwargs)
@@ -150,7 +155,8 @@ def evaluate_multilabel_classification(
         outputs: Optional[np.ndarray] = None,
         class_names: Optional[list] = None,
         roc: bool = True,
-        report: bool = False,
+        print_report: bool = True,
+        return_report: bool = False,
         figsize: tuple[int, int] = (10, 8),
         save_path: Optional[str] = None,
         save_dpi: int = 600,
@@ -174,7 +180,9 @@ def evaluate_multilabel_classification(
         Names of the classes. If None, uses integer labels.
     roc : bool, optional
         Whether to compute and display ROC curves for each class. Default is True.
-    report : bool, optional
+    print_report : bool, optional
+        Whether to print the classification report. Default is True.
+    return_report : bool, optional
         Whether to return the classification report as a dictionary. Default is False.
     figsize : tuple, optional
         Size of the confusion matrix plot. Default is (10, 8).
@@ -207,10 +215,11 @@ def evaluate_multilabel_classification(
     if class_names is None:
         class_names = [str(i) for i in range(len(np.unique(y_true)))]
 
-    print(classification_report(
-        y_true, y_pred, target_names=class_names,
-        digits=digits, zero_division=zero_division, **kwargs
-    ))
+    if print_report:
+        print(classification_report(
+            y_true, y_pred, target_names=class_names,
+            digits=digits, zero_division=zero_division, **kwargs
+        ))
 
     accuracy = multilabel_accuracy(y_true, y_pred)
     auc_score = multilabel_auc(y_true, outputs)
@@ -244,7 +253,7 @@ def evaluate_multilabel_classification(
             save_format = save_format,
         )
 
-    if report:
+    if return_report:
         report = classification_report(
             y_true, y_pred, target_names=class_names, digits=digits,
             zero_division=zero_division, output_dict=True, **kwargs)
