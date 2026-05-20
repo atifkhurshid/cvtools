@@ -4,7 +4,7 @@ Utility functions for PyTorch models.
 
 # Author: Atif Khurshid
 # Created: 2025-06-22
-# Modified: 2026-03-25
+# Modified: 2026-05-20
 # Version: 2.6
 # Changelog:
 #     - 2025-08-01: Added type hints and documentation.
@@ -24,6 +24,7 @@ Utility functions for PyTorch models.
 #     - 2026-03-16: Added support for a pretraining loop in run_trials.
 #     - 2026-03-18: Added support for ROC curve computation in run_trials.
 #     - 2026-03-25: Added support for saving model checkpoints during training.
+#     - 2026-05-20: Fixed formatting bugs in logging and allowed training progress bar to be disabled.
 
 from pathlib import Path
 from typing import Callable, Union, Optional
@@ -245,6 +246,7 @@ def train_classification_model(
         checkpoint_dir: Optional[str] = None,
         checkpoint_interval: int = 10,
         verbose: bool = True,
+        pbar: bool = True,
     ):
     """
     Train a PyTorch classification model using the provided dataloader.
@@ -287,6 +289,8 @@ def train_classification_model(
         Interval (in epochs) at which to save model checkpoints. Default is 10.
     verbose : bool
         Whether to print training progress to the console. Default is True.
+    pbar : bool
+        Whether to show a progress bar during training. Default is True.
 
     Examples
     ---------
@@ -297,111 +301,106 @@ def train_classification_model(
     ... ])
     >>> train_classification_model(model, train_dataloader, val_dataloader=val_dataloader)
     """
-    try:
-        if checkpoint_dir is not None:
-            checkpoint_dir = Path(checkpoint_dir)
-            checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    if checkpoint_dir is not None:
+        checkpoint_dir = Path(checkpoint_dir)
+        checkpoint_dir.mkdir(parents=True, exist_ok=True)
+
+    if val_dataloader is not None:
+        if val_strategy == "batch":
+            val_dataloader = InfiniteDataLoader(val_dataloader)
+
+        if early_stopping:
+            early_stopper = EarlyStopping(
+                patience = patience,
+                min_delta = min_delta,
+                restore_best_weights = restore_best_weights
+            )
+
+    epoch = 0
+    while epoch < epochs:
+        epoch += 1
+        model.train()
+
+        epoch_loss_train = []
+        epoch_loss_val = []
+        epoch_metric_train = []
+        epoch_metric_val = []
+
+        for i, (X, y) in tqdm(
+                enumerate(train_dataloader, start=1),
+                total=len(train_dataloader),
+                desc=f"Epoch {epoch}/{epochs}",
+                disable = not pbar,
+            ):
+            batch_loss_train = model.train_step(X, y)
+            batch_metric_train = model.compute_metric()
+            epoch_loss_train.append(batch_loss_train)
+            epoch_metric_train.append(batch_metric_train)
+
+            if i % log_interval == 0:
+
+                if val_dataloader is not None:
+
+                    if val_strategy == "dataset":
+                        batch_loss_val, batch_metric_val, _, _, _ = test_classification_model(
+                            model, val_dataloader, return_outputs=False, pbar=False)
+                        epoch_loss_val = batch_loss_val
+                        epoch_metric_val = batch_metric_val
+
+                    elif val_strategy == "batch":
+                        X, y = next(val_dataloader)
+                        batch_loss_val, batch_metric_val, _, _, _ = test_classification_model(
+                            model, (X, y), return_outputs=False, pbar=False)
+                        epoch_loss_val.append(batch_loss_val)
+                        epoch_metric_val.append(batch_metric_val)
+
+                if run is not None:
+                    run.log({
+                        "train/loss": batch_loss_train,
+                        "train/metric": batch_metric_train,
+                        "valid/loss": batch_loss_val if val_dataloader is not None else None,
+                        "valid/metric": batch_metric_val if val_dataloader is not None else None,
+                        "learning_rate": model.get_learning_rate(),
+                        "samples_seen": model.training_samples_seen,
+                    })
+
+        epoch_loss_train = np.mean(epoch_loss_train)
+        epoch_metric_train = np.mean(epoch_metric_train)
+
+        if verbose:
+            print(f"Epoch {epoch}/{epochs}, ", end="")
+            print(f"Train Loss: {epoch_loss_train:.4f}, Train Metric: {epoch_metric_train:.4f}, ", end="")
 
         if val_dataloader is not None:
-            if val_strategy == "batch":
-                val_dataloader = InfiniteDataLoader(val_dataloader)
-
-            if early_stopping:
-                early_stopper = EarlyStopping(
-                    patience = patience,
-                    min_delta = min_delta,
-                    restore_best_weights = restore_best_weights
-                )
-
-        epoch = 0
-        while epoch < epochs:
-            epoch += 1
-            model.train()
-
-            epoch_loss_train = []
-            epoch_loss_val = []
-            epoch_metric_train = []
-            epoch_metric_val = []
-
-            for i, (X, y) in tqdm(
-                    enumerate(train_dataloader, start=1),
-                    total=len(train_dataloader),
-                    desc=f"Epoch {epoch}/{epochs}",
-                    disable = not verbose,
-                ):
-                batch_loss_train = model.train_step(X, y)
-                batch_metric_train = model.compute_metric()
-                epoch_loss_train.append(batch_loss_train)
-                epoch_metric_train.append(batch_metric_train)
-
-                if i % log_interval == 0:
-
-                    if val_dataloader is not None:
-
-                        if val_strategy == "dataset":
-                            batch_loss_val, batch_metric_val, _, _, _ = test_classification_model(
-                                model, val_dataloader, return_outputs=False, pbar=False)
-                            epoch_loss_val = batch_loss_val
-                            epoch_metric_val = batch_metric_val
-
-                        elif val_strategy == "batch":
-                            X, y = next(val_dataloader)
-                            batch_loss_val, batch_metric_val, _, _, _ = test_classification_model(
-                                model, (X, y), return_outputs=False, pbar=False)
-                            epoch_loss_val.append(batch_loss_val)
-                            epoch_metric_val.append(batch_metric_val)
-
-                    if run is not None:
-                        run.log({
-                            "train/loss": batch_loss_train,
-                            "train/metric": batch_metric_train,
-                            "valid/loss": batch_loss_val if val_dataloader is not None else None,
-                            "valid/metric": batch_metric_val if val_dataloader is not None else None,
-                            "learning_rate": model.get_learning_rate(),
-                            "samples_seen": model.training_samples_seen,
-                        })
-
-            epoch_loss_train = np.mean(epoch_loss_train)
-            epoch_metric_train = np.mean(epoch_metric_train)
+            epoch_loss_val = np.mean(epoch_loss_val)
+            epoch_metric_val = np.mean(epoch_metric_val)
 
             if verbose:
-                print(f"Epoch {epoch}/{epochs}, ", end="")
-                print(f"Train Loss: {epoch_loss_train:.4f}, Train Metric: {epoch_metric_train:.4f}, ", end="")
-            
-            if val_dataloader is not None:
-                epoch_loss_val = np.mean(epoch_loss_val)
-                epoch_metric_val = np.mean(epoch_metric_val)
+                print(f"Val Loss: {epoch_loss_val:.4f}, Val Metric: {epoch_metric_val:.4f}")
 
-                if verbose:
-                    print(f"Val Loss: {epoch_loss_val:.4f}, Val Metric: {epoch_metric_val:.4f}", end="")
+            if early_stopping:
+                early_stopper.step(model, epoch_loss_val)
+                if early_stopper.early_stop:
+                    if verbose:
+                        print(f"Early stopping triggered at epoch {epoch}")
+                    early_stopper.restore(model)
+                    epoch = epochs  # Exit outer loop
+        else:
+            if verbose:
+                print()
 
-                if early_stopping:
-                    early_stopper.step(model, epoch_loss_val)
-                    if early_stopper.early_stop:
-                        if verbose:
-                            print(f"\nEarly stopping triggered at epoch {epoch}")
-                        early_stopper.restore(model)
-                        epoch = epochs  # Exit outer loop
+        model.on_epoch_end()
 
-            model.on_epoch_end()
+        if checkpoint_dir is not None and epoch % checkpoint_interval == 0:
+            if verbose:
+                print(f"Saving checkpoint for epoch {epoch}...")
+            torch.save(model.state_dict(), checkpoint_dir / f"model_epoch_{epoch}.pth")
 
-            if checkpoint_dir is not None and epoch % checkpoint_interval == 0:
-                if verbose:
-                    print(f"Saving checkpoint for epoch {epoch}...")
-                torch.save(model.state_dict(), checkpoint_dir / f"model_epoch_{epoch}.pth")
+    if early_stopping and not early_stopper.early_stop:
+        early_stopper.restore(model)
 
-        if early_stopping and not early_stopper.early_stop:
-            early_stopper.restore(model)
-
-        model.eval()
+    model.eval()
     
-    except Exception as e:
-        try:
-            pass
-        finally:
-            wandb.finish()
-            raise e
-
 
 def run_trials(
         n_trials: int,
