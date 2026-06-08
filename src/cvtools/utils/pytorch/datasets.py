@@ -4,11 +4,12 @@ Utility functions for PyTorch datasets.
 
 # Author: Atif Khurshid
 # Created: 2025-09-08
-# Modified: 2026-02-19
-# Version: 1.2
+# Modified: 2026-06-08
+# Version: 1.3
 # Changelog:
 #     - 2025-09-22: Added InfiniteDataLoader function.
 #     - 2026-02-19: Modified train_test_split to use sklearn function.
+#     - 2026-05-08: Added train_samples_per_class option to train_test_split.
 
 from typing import Optional, Union
 
@@ -33,6 +34,7 @@ def dataset_train_test_split(
         labels: list,
         test_size: Optional[Union[float, int]] = None,
         train_size: Optional[Union[float, int]] = None,
+        train_samples_per_class: Optional[int] = None,
         random_state: Optional[int] = None,
         shuffle: bool = True,
         stratify: bool = True,
@@ -56,6 +58,9 @@ def dataset_train_test_split(
         proportion of the dataset to include in the train split.
         If int, represents the absolute number of train samples.
         If None, the value is set to the complement of the test size.
+    train_samples_per_class : int, optional
+        If specified, overrides train_size and ensures that the training set
+        contains exactly this many samples per class.
     random_state : int, optional
         Controls the randomness of the split.
         Pass an int for reproducible output across multiple function calls.
@@ -80,14 +85,34 @@ def dataset_train_test_split(
     >>> labels = mnist_dataset.targets.tolist()
     >>> train_subset, test_subset = dataset_train_test_split(mnist_dataset, labels, train_size=0.8)
     """
-    train_indices, test_indices = train_test_split(
-        np.arange(len(labels)),
-        test_size = test_size,
-        train_size = train_size,
-        random_state = random_state,
-        shuffle = shuffle,
-        stratify = labels if stratify else None,
-    )
+    if train_samples_per_class is not None:
+
+        rng = np.random.default_rng(random_state)
+        
+        labels = np.array(labels)
+        train_indices, test_indices = [], []
+
+        for cls in np.unique(labels):
+            cls_indices = np.where(labels == cls)[0]
+            if len(cls_indices) < train_samples_per_class:
+                raise ValueError(f"Class '{cls}' has only {len(cls_indices)} samples.")
+            
+            chosen = rng.choice(cls_indices, size=train_samples_per_class, replace=False)
+            remaining = np.setdiff1d(cls_indices, chosen)
+            
+            train_indices.extend(chosen)
+            test_indices.extend(remaining)
+
+    else:
+
+        train_indices, test_indices = train_test_split(
+            np.arange(len(labels)),
+            test_size = test_size,
+            train_size = train_size,
+            random_state = random_state,
+            shuffle = shuffle,
+            stratify = labels if stratify else None,
+        )
 
     train_subset = Subset(dataset, train_indices)
     test_subset = Subset(dataset, test_indices)
