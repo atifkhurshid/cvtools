@@ -6,3 +6,4 @@ from .spatial_layer_norm import SpatialLayerNorm
 from .weighted_divisive_norm import WeightedDivisiveNorm
 from .square_padding import SquarePad2D
 from .center_dependent_pool import CenterDependentPool2D
+from .grayscale_to_rgb import GrayscaleToRGB
