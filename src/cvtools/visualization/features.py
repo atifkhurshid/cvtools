@@ -4,8 +4,8 @@ Visualizations for feature vectors.
 
 # Author: Atif Khurshid
 # Created: 2025-06-16
-# Modified: 2025-10-16
-# Version: 1.5
+# Modified: 2026-06-29
+# Version: 1.6
 # Changelog:
 #     - 2025-08-04: Added support for t-SNE visualization.
 #     - 2025-08-15: Added function to display all visualizations together.
@@ -14,6 +14,7 @@ Visualizations for feature vectors.
 #     - 2025-08-21: Added function to visualize feature distribution.
 #     - 2025-08-22: Updated feature distribution visualization.
 #     - 2025-10-16: Added options to save visualizations to files.
+#     - 2026-06-29: Added colormap option for scatter plots in all visualizations.
 
 from typing import Union, Optional
 
@@ -21,6 +22,7 @@ import numpy as np
 import seaborn as sns
 import mpl_toolkits.mplot3d
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 from sklearn.manifold import TSNE
 from sklearn.decomposition import IncrementalPCA
 
@@ -35,6 +37,7 @@ def visualize_features(
         n_components: int = 2,
         batch_size: int = 1000,
         perplexity: float = 30.0,
+        cmap: str = "tab20",
         figsize: tuple[int, int] = (10, 8),
         save_path: Optional[str] = None,
         save_dpi: int = 600,
@@ -59,6 +62,8 @@ def visualize_features(
         Batch size for IncrementalPCA, default is 1000.
     perplexity : float, optional
         Perplexity parameter for t-SNE, default is 30.
+    cmap : str, optional
+        Colormap for the scatter plots, default is "tab20".
     figsize : tuple of int, optional
         Size of the figure for visualization, default is (10, 8).
     save_path : str | None, optional
@@ -92,11 +97,16 @@ def visualize_features(
     else:
         raise ValueError("Invalid mode. Choose either 'pca' or 'tsne'.")
 
+    cmap = plt.get_cmap(cmap)
+    n_colors = len(np.unique(labels))
+    norm = mcolors.BoundaryNorm(np.arange(n_colors + 1) - 0.5, n_colors)
+
     fig = plt.figure(1, figsize=figsize)
 
     if n_components == 2:
         ax = fig.add_subplot(111)
-        scatter = ax.scatter(reduced_features[:, 0], reduced_features[:, 1], c=labels, cmap="tab20")
+        scatter = ax.scatter(reduced_features[:, 0], reduced_features[:, 1],
+                             c=labels, cmap=cmap, norm=norm)
 
     elif n_components == 3:
         ax = fig.add_subplot(111, projection='3d', elev=-150, azim=110)
@@ -105,8 +115,7 @@ def visualize_features(
             reduced_features[:, 0],
             reduced_features[:, 1],
             reduced_features[:, 2],
-            c=labels,
-            cmap="tab20"
+            c=labels, cmap=cmap, norm=norm
         )
         ax.set_zlabel('Component 3')
         ax.zaxis.set_ticklabels([])
@@ -140,6 +149,7 @@ def all_feature_visualizations(
         class_names: list[str],
         batch_size: int = 1000,
         perplexity: float = 30.0,
+        cmap: str = "tab20",
         figsize: tuple[int, int] = (10, 32),
         save_path: Optional[str] = None,
         save_dpi: int = 600,
@@ -160,6 +170,8 @@ def all_feature_visualizations(
         Batch size for IncrementalPCA, default is 1000.
     perplexity : float, optional
         Perplexity parameter for t-SNE, default is 30.0.
+    cmap : str, optional
+        Colormap for the scatter plots, default is "tab20".
     figsize : tuple[int, int], optional
         Size of the figure for visualization, default is (10, 32).
     save_path : str | None, optional
@@ -192,10 +204,15 @@ def all_feature_visualizations(
     tsne3 = TSNE(n_components=3, perplexity=perplexity, random_state=42)
     tsne3_reduced_features = tsne3.fit_transform(features)
 
+    cmap = plt.get_cmap(cmap)
+    n_colors = len(np.unique(labels))
+    norm = mcolors.BoundaryNorm(np.arange(n_colors + 1) - 0.5, n_colors)
+
     fig = plt.figure(1, figsize=figsize)
 
     ax = fig.add_subplot(411)
-    scatter = ax.scatter(pca2_reduced_features[:, 0], pca2_reduced_features[:, 1], c=labels, cmap="tab20")
+    scatter = ax.scatter(pca2_reduced_features[:, 0], pca2_reduced_features[:, 1],
+                         c=labels, cmap=cmap, norm=norm)
     ax.set_title("PCA (PoV: {:.2f})".format(np.sum(pca2.explained_variance_ratio_)))
 
     ax = fig.add_subplot(412, projection='3d', elev=-150, azim=110)
@@ -203,13 +220,13 @@ def all_feature_visualizations(
         pca3_reduced_features[:, 0],
         pca3_reduced_features[:, 1],
         pca3_reduced_features[:, 2],
-        c=labels,
-        cmap="tab20"
+        c=labels, cmap=cmap, norm=norm
     )
     ax.set_title("PCA (PoV: {:.2f})".format(np.sum(pca3.explained_variance_ratio_)))
 
     ax = fig.add_subplot(413)
-    scatter = ax.scatter(tsne2_reduced_features[:, 0], tsne2_reduced_features[:, 1], c=labels, cmap="tab20")
+    scatter = ax.scatter(tsne2_reduced_features[:, 0], tsne2_reduced_features[:, 1],
+                         c=labels, cmap=cmap, norm=norm)
     ax.set_title("t-SNE (perplexity={})".format(perplexity))
 
     ax = fig.add_subplot(414, projection='3d', elev=-150, azim=110)
@@ -217,8 +234,7 @@ def all_feature_visualizations(
         tsne3_reduced_features[:, 0],
         tsne3_reduced_features[:, 1],
         tsne3_reduced_features[:, 2],
-        c=labels,
-        cmap="tab20"
+        c=labels, cmap=cmap, norm=norm
     )
     ax.set_title("t-SNE (perplexity={})".format(perplexity))
 
