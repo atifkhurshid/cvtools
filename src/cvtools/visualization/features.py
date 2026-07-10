@@ -4,8 +4,8 @@ Visualizations for feature vectors.
 
 # Author: Atif Khurshid
 # Created: 2025-06-16
-# Modified: 2026-06-29
-# Version: 1.6
+# Modified: 2026-07-06
+# Version: 1.7
 # Changelog:
 #     - 2025-08-04: Added support for t-SNE visualization.
 #     - 2025-08-15: Added function to display all visualizations together.
@@ -15,6 +15,7 @@ Visualizations for feature vectors.
 #     - 2025-08-22: Updated feature distribution visualization.
 #     - 2025-10-16: Added options to save visualizations to files.
 #     - 2026-06-29: Added colormap option for scatter plots in all visualizations.
+#     - 2026-07-06: Allowed limits for scatter plots.
 
 from typing import Union, Optional
 
@@ -37,6 +38,7 @@ def visualize_features(
         n_components: int = 2,
         batch_size: int = 1000,
         perplexity: float = 30.0,
+        lims: Optional[tuple[float, float]] = None,
         cmap: str = "tab20",
         figsize: tuple[int, int] = (10, 8),
         save_path: Optional[str] = None,
@@ -62,6 +64,8 @@ def visualize_features(
         Batch size for IncrementalPCA, default is 1000.
     perplexity : float, optional
         Perplexity parameter for t-SNE, default is 30.
+    lims : tuple of float, optional
+        Limits for the scatter plots, default is None.
     cmap : str, optional
         Colormap for the scatter plots, default is "tab20".
     figsize : tuple of int, optional
@@ -119,6 +123,12 @@ def visualize_features(
         )
         ax.set_zlabel('Component 3')
         ax.zaxis.set_ticklabels([])
+        if lims is not None:
+            ax.set_zlim(*lims)
+
+    if lims is not None:
+        ax.set_xlim(*lims)
+        ax.set_ylim(*lims)
 
     ax.set_xlabel('Component 1')
     ax.set_ylabel('Component 2')
@@ -149,6 +159,8 @@ def all_feature_visualizations(
         class_names: list[str],
         batch_size: int = 1000,
         perplexity: float = 30.0,
+        pca_lims: Optional[tuple[float, float]] = None,
+        tsne_lims: Optional[tuple[float, float]] = None,
         cmap: str = "tab20",
         figsize: tuple[int, int] = (10, 32),
         save_path: Optional[str] = None,
@@ -170,6 +182,10 @@ def all_feature_visualizations(
         Batch size for IncrementalPCA, default is 1000.
     perplexity : float, optional
         Perplexity parameter for t-SNE, default is 30.0.
+    pca_lims : tuple[float, float] | None, optional
+        Limits for the PCA plots, default is None.
+    tsne_lims : tuple[float, float] | None, optional
+        Limits for the t-SNE plots, default is None.
     cmap : str, optional
         Colormap for the scatter plots, default is "tab20".
     figsize : tuple[int, int], optional
@@ -214,6 +230,9 @@ def all_feature_visualizations(
     scatter = ax.scatter(pca2_reduced_features[:, 0], pca2_reduced_features[:, 1],
                          c=labels, cmap=cmap, norm=norm)
     ax.set_title("PCA (PoV: {:.2f})".format(np.sum(pca2.explained_variance_ratio_)))
+    if pca_lims is not None:
+        ax.set_xlim(*pca_lims)
+        ax.set_ylim(*pca_lims)
 
     ax = fig.add_subplot(412, projection='3d', elev=-150, azim=110)
     scatter = ax.scatter(
@@ -223,11 +242,18 @@ def all_feature_visualizations(
         c=labels, cmap=cmap, norm=norm
     )
     ax.set_title("PCA (PoV: {:.2f})".format(np.sum(pca3.explained_variance_ratio_)))
+    if pca_lims is not None:
+        ax.set_xlim(*pca_lims)
+        ax.set_ylim(*pca_lims)
+        ax.set_zlim(*pca_lims)
 
     ax = fig.add_subplot(413)
     scatter = ax.scatter(tsne2_reduced_features[:, 0], tsne2_reduced_features[:, 1],
                          c=labels, cmap=cmap, norm=norm)
     ax.set_title("t-SNE (perplexity={})".format(perplexity))
+    if tsne_lims is not None:
+        ax.set_xlim(*tsne_lims)
+        ax.set_ylim(*tsne_lims)
 
     ax = fig.add_subplot(414, projection='3d', elev=-150, azim=110)
     scatter = ax.scatter(
@@ -237,6 +263,10 @@ def all_feature_visualizations(
         c=labels, cmap=cmap, norm=norm
     )
     ax.set_title("t-SNE (perplexity={})".format(perplexity))
+    if tsne_lims is not None:
+        ax.set_xlim(*tsne_lims)
+        ax.set_ylim(*tsne_lims)
+        ax.set_zlim(*tsne_lims)
 
     handles, _ = scatter.legend_elements(num=None)
     legend_labels = [class_names[i] for i in np.unique(labels)]

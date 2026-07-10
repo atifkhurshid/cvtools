@@ -4,14 +4,15 @@ Visualizations for clustering.
 
 # Author: Atif Khurshid
 # Created: 2025-08-19
-# Modified: 2025-10-16
-# Version: 1.5
+# Modified: 2026-07-06
+# Version: 1.6
 # Changelog:
 #     - 2025-08-20: Added clustering stability visualization.
 #     - 2025-08-21: Updated cluster variability visualization.
 #     - 2025-08-27: Updated cluster variability visualization.
 #     - 2025-09-02: Changed separability index calculations.
 #     - 2025-10-16: Added options to save visualizations to files.
+#     - 2026-07-06: Add label to colorbar in visualize_cluster_variability.
 
 from typing import Optional, Union
 
@@ -90,7 +91,7 @@ def visualize_cluster_variability(
     axes[0].set_ylim(variability_limits)
 
 
-    cbar = fig.colorbar(cm.ScalarMappable(norm=norm, cmap=cmap), ax=axes[0])
+    cbar = fig.colorbar(cm.ScalarMappable(norm=norm, cmap=cmap), ax=axes[0], label='Separability Index')
     colors = plt.get_cmap(cmap)(norm(separability))
 
     axes[1].bar(unique_labels.astype(str), np.maximum(0, separability), width=bar_width, color=colors, edgecolor='k')
