@@ -4,17 +4,21 @@ Base class for classification datasets.
 
 # Author: Atif Khurshid
 # Created: 2025-06-18
-# Modified: 2026-03-27
-# Version: 1.4
+# Modified: 2026-07-23
+# Version: 1.5
 # Changelog:
 #     - 2026-03-03: Added _preprocess_image method to handle image scaling and resizing in a consistent way across datasets.
 #     - 2026-03-26: Merged repeated code into base class.
 #     - 2026-03-27: Refactored base class into separate base classes for image-based and HDF5-based datasets.
+#     - 2026-07-23: Added visualize_dataset method to display images with their class names.
 
 from typing import Optional, Union, Callable
 
 import cv2
+import math
+import random
 import numpy as np
+import matplotlib.pyplot as plt
 
 from ....image import imscale, imresize, imresize_maximum
 
@@ -225,3 +229,118 @@ class _ClassificationBase:
             The corresponding class name for the index.
         """
         return self.index2class.get(x, "Unknown")
+
+
+    def visualize_dataset(
+            self,
+            rows = None,
+            cols = None,
+            seed = None,
+            figsize_per_cell = 2.2
+        ):
+        """
+        Display a grid of randomly selected images with their class names.
+
+        Default (rows=None, cols=None): one sample per class, grid sized
+        as close to square as possible.
+
+        If rows and cols are given:
+            - total_slots = rows * cols
+            - if total_slots <= num_classes: randomly pick that many distinct
+            classes, one image each.
+            - if total_slots > num_classes: every class gets at least one
+            image, remaining slots are filled by oversampling classes
+            at random (with replacement, different images when possible).
+        
+        Parameters
+        ----------
+        rows : int, optional
+            Number of rows in the grid. If None, calculated automatically.
+        cols : int, optional
+            Number of columns in the grid. If None, calculated automatically.
+        seed : int, optional
+            Random seed for reproducibility. If None, no seed is set.
+        figsize_per_cell : float, optional
+            Size of each cell in the grid. Default is 2.2.
+        """
+        if seed is not None:
+            random.seed(seed)
+            np.random.seed(seed)
+
+        class_names = self.classes
+        num_classes = len(class_names)
+
+        # Build label -> list of dataset indices. Cache it on the instance
+        # so repeated calls don't rescan the dataset.
+        if not hasattr(self, "_class_to_indices"):
+            labels = getattr(self, "labels", None)
+            if labels is None:
+                # fallback: scan the dataset once (slow, only used if no
+                # label list is available)
+                labels = [self[i][1] for i in range(len(self))]
+
+            class_to_indices = {c: [] for c in range(num_classes)}
+            for idx, lbl in enumerate(labels):
+                if isinstance(lbl, str):
+                    lbl = self.class_name_to_index(lbl)
+                class_to_indices[int(lbl)].append(idx)
+            self._class_to_indices = class_to_indices
+
+        class_to_indices = self._class_to_indices
+
+        # Determine grid size and which (class, index) pairs to show.
+        if rows is None and cols is None:
+            n = num_classes
+            cols = math.ceil(math.sqrt(n))
+            rows = math.ceil(n / cols)
+            selected_classes = list(range(num_classes))
+            selected_pairs = [
+                (c, random.choice(class_to_indices[c])) for c in selected_classes
+            ]
+        else:
+            if rows is None:
+                rows = math.ceil(cols and 1)  # placeholder, overwritten below
+            if cols is None:
+                cols = math.ceil(rows and 1)
+            total_slots = rows * cols
+
+            if total_slots <= num_classes:
+                chosen_classes = random.sample(range(num_classes), total_slots)
+                selected_pairs = [
+                    (c, random.choice(class_to_indices[c])) for c in chosen_classes
+                ]
+            else:
+                # every class gets one slot first
+                selected_pairs = [
+                    (c, random.choice(class_to_indices[c])) for c in range(num_classes)
+                ]
+                remaining = total_slots - num_classes
+                extra_classes = random.choices(range(num_classes), k=remaining)
+                for c in extra_classes:
+                    pool = class_to_indices[c]
+                    used = {i for cc, i in selected_pairs if cc == c}
+                    candidates = [i for i in pool if i not in used] or pool
+                    selected_pairs.append((c, random.choice(candidates)))
+
+            random.shuffle(selected_pairs)
+
+        # Plot.
+        fig, axes = plt.subplots(
+            rows, cols, figsize=(cols * figsize_per_cell, rows * figsize_per_cell)
+        )
+        axes = np.array(axes).reshape(rows, cols)
+
+        for ax in axes.flat:
+            ax.axis("off")
+
+        for ax, (class_idx, sample_idx) in zip(axes.flat, selected_pairs):
+            image, _ = self[sample_idx]
+            if hasattr(image, "permute"):  # CHW tensor -> HWC
+                image = image.permute(1, 2, 0).numpy()
+                image = np.clip(image, 0, 1) if image.max() <= 1.0 else image.astype(np.uint8)
+            ax.imshow(image)
+            ax.set_title(class_names[class_idx], fontsize=9)
+            ax.axis("off")
+
+        plt.tight_layout()
+        plt.show()
