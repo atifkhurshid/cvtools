@@ -35,7 +35,7 @@ class CXRDataset(_ClassificationBaseImageHDF5):
     def __init__(
         self,
         root_dir: str,
-        view: str = "AP",
+        view: str = "both",
         train: bool = True,
         class_mode: str = "multilabel",
         balanced_classes: bool = False,

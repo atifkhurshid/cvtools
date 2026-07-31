@@ -4,13 +4,14 @@ Base class for classification datasets.
 
 # Author: Atif Khurshid
 # Created: 2025-06-18
-# Modified: 2026-07-23
+# Modified: 2026-07-30
 # Version: 1.5
 # Changelog:
 #     - 2026-03-03: Added _preprocess_image method to handle image scaling and resizing in a consistent way across datasets.
 #     - 2026-03-26: Merged repeated code into base class.
 #     - 2026-03-27: Refactored base class into separate base classes for image-based and HDF5-based datasets.
 #     - 2026-07-23: Added visualize_dataset method to display images with their class names.
+#     - 2026-07-30: Added support for colormap in visualize_dataset method.
 
 from typing import Optional, Union, Callable
 
@@ -233,10 +234,11 @@ class _ClassificationBase:
 
     def visualize_dataset(
             self,
-            rows = None,
-            cols = None,
-            seed = None,
-            figsize_per_cell = 2.2
+            rows: Optional[int] = None,
+            cols: Optional[int] = None,
+            seed: Optional[int] = None,
+            cmap: Optional[str] = None,
+            figsize_per_cell: float = 2.2,
         ):
         """
         Display a grid of randomly selected images with their class names.
@@ -260,6 +262,9 @@ class _ClassificationBase:
             Number of columns in the grid. If None, calculated automatically.
         seed : int, optional
             Random seed for reproducibility. If None, no seed is set.
+        cmap : str, optional
+            Colormap to use for displaying images.
+            If None, defaults to 'gray' for single-channel images and 'viridis' for multi-channel images.
         figsize_per_cell : float, optional
             Size of each cell in the grid. Default is 2.2.
         """
@@ -338,7 +343,7 @@ class _ClassificationBase:
             if hasattr(image, "permute"):  # CHW tensor -> HWC
                 image = image.permute(1, 2, 0).numpy()
                 image = np.clip(image, 0, 1) if image.max() <= 1.0 else image.astype(np.uint8)
-            ax.imshow(image)
+            ax.imshow(image, cmap=cmap)
             ax.set_title(class_names[class_idx], fontsize=9)
             ax.axis("off")
 
