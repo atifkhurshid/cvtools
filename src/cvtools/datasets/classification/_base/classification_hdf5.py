@@ -4,12 +4,13 @@ Base class for classification datasets sourced from HDF5 file.
 
 # Author: Atif Khurshid
 # Created: 2026-03-27
-# Modified: 2026-04-17
+# Modified: 2026-07-31
 # Version: 1.1
 # Changelog:
 #     - 2026-03-27: Refactored base class into separate base classes for image-based and HDF5-based datasets.
 #     - 2026-04-17: Allowed custom HDF5 file paths
 #     - 2026-04-17: Added support for per-worker hdf5 file handles.
+#     - 2026-07-31: Changed parent init call.
 
 from typing import Optional, Union
 
@@ -64,7 +65,8 @@ class _ClassificationBaseHDF5(_ClassificationBase):
             If hdf5_mode is "stream", this will be an open h5py.File object for reading images on-the-fly.
             If hdf5_mode is "preload", this will be a dictionary mapping image paths to preloaded numpy arrays.
         """
-        super().__init__(
+        _ClassificationBase.__init__(
+            self,
             root_dir=root_dir,
             image_scale=image_scale,
             image_size=image_size,
