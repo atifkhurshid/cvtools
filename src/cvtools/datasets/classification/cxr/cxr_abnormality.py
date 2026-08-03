@@ -125,13 +125,11 @@ class CXRAbnormalityDataset(_ClassificationBaseImageHDF5):
             split_filename = "test_rad_consensus_voted3.txt"
 
         split_path = os.path.join(self.root_dir, "abnormality_dataset_split", split_filename)
-        split_df = pd.read_csv(split_path, sep=" ", header=None, names=["image_path", "label"])
+        split_df = pd.read_csv(split_path, sep=" ", header=None, names=["Image Index", "Binary Label"])
 
-        images_in_split = split_df['image_path'].tolist()
-        self.data = self.data[self.data['Image Index'].isin(images_in_split)]
-        self.data = self.data.reset_index(drop=True)
+        split_df['Binary Label'] = split_df['Binary Label'].map({1: 'abnormal', 0: 'normal'})
 
-        self.data['Finding Labels'] = split_df['label'].map({1: 'abnormal', 0: 'normal'})
+        self.data = self.data.merge(split_df, on="Image Index", how="inner")
 
         # Filter data based on view position
         assert view in ["AP", "PA", "both"], \
@@ -141,8 +139,8 @@ class CXRAbnormalityDataset(_ClassificationBaseImageHDF5):
         elif view == "PA":
             self.data = self.data[self.data["View Position"] == "PA"]
 
-        self.labels = self.data['Finding Labels'].tolist()
-        self.classes = sorted(self.data['Finding Labels'].unique().tolist())
+        self.labels = self.data['Binary Label'].tolist()
+        self.classes = sorted(self.data['Binary Label'].unique().tolist())
 
         self._initialize()
 
