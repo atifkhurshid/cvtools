@@ -4,8 +4,8 @@ Dataloader for NIH Chest X-Ray dataset: https://nihcc.app.box.com/v/ChestXray-NI
 
 # Author: Atif Khurshid
 # Created: 2025-05-20
-# Modified: 2026-05-05
-# Version: 2.7
+# Modified: 2026-08-03
+# Version: 2.8
 # Changelog:
 #     - 2025-05-22: Add image_size parameter for resizing images
 #     - 2025-05-22: Remove pytorch dependency and refactor code
@@ -20,6 +20,7 @@ Dataloader for NIH Chest X-Ray dataset: https://nihcc.app.box.com/v/ChestXray-NI
 #     - 2026-04-30: Added support for multiclass classification.
 #     - 2026-04-30: Added class hierarchy based on RadLex ontology.
 #     - 2026-05-05: Added option to balance classes by undersampling the majority class.
+#     - 2026-08-03: Updated train/test split method.
 
 import os
 from typing import Optional, Union
@@ -131,6 +132,16 @@ class CXRDataset(_ClassificationBaseImageHDF5):
         # Load annotations file
         self.data = pd.read_csv(os.path.join(self.root_dir, 'Data_Entry_2017_v2020.csv'))
 
+        if train:
+            split_filename = 'train_val_list.txt'
+        else:
+            split_filename = 'test_list.txt'
+
+        split_path = os.path.join(self.root_dir, split_filename)
+        split_df = pd.read_csv(split_path, sep=" ", header=None, names=["Image Index"])
+
+        self.data = self.data.merge(split_df, on="Image Index", how="inner")
+
         # Filter data based on view position
         assert view in ["AP", "PA", "both"], \
             f"Invalid view position: {view}. Must be 'AP', 'PA', or 'both'."
@@ -138,21 +149,6 @@ class CXRDataset(_ClassificationBaseImageHDF5):
             self.data = self.data[self.data["View Position"] == "AP"]
         elif view == "PA":
             self.data = self.data[self.data["View Position"] == "PA"]
-
-        if train:
-            # Read list of train/val indices
-            with open(os.path.join(self.root_dir, 'train_val_list.txt'), 'r') as f:
-                train_val_list = f.read().split('\n')
-            # Filter the data to include only the train/val indices
-            self.data = self.data[self.data['Image Index'].isin(train_val_list)]
-        else:
-            # Read list of test indices
-            with open(os.path.join(self.root_dir, 'test_list.txt'), 'r') as f:
-                test_list = f.read().split('\n')
-            # Filter the data to include only the test indices
-            self.data = self.data[self.data['Image Index'].isin(test_list)]
-        # Reset the index of the DataFrame to ensure it is sequential
-        self.data = self.data.reset_index(drop=True)
 
         assert class_mode in ["binary", "singleclass", "multilabel"], \
             f"Invalid class_mode: {class_mode}. Must be 'binary', 'singleclass', or 'multilabel'."
