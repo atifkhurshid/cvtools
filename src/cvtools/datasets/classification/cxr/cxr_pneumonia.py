@@ -1,15 +1,16 @@
 """
-Dataloader for a subset of the NIH Chest X-Ray dataset with binary classification of abnormality.
+Dataloader for a subset of the NIH Chest X-Ray dataset with pneumonia classification.
 """
 
 # Author: Atif Khurshid
-# Created: 2026-07-30
+# Created: 2026-08-04
 # Modified: None
 # Version: 1.0
 # Changelog:
-#     - 2026-07-30: Initial version.
+#     - 2026-08-04: Initial version.
 
 import os
+import json
 from typing import Optional, Union
 
 import numpy as np
@@ -18,12 +19,12 @@ import pandas as pd
 from .._base import _ClassificationBaseImageHDF5
 
 
-class CXRAbnormalityDataset(_ClassificationBaseImageHDF5):
+class CXRPneumoniaDataset(_ClassificationBaseImageHDF5):
 
     def __init__(
         self,
         root_dir: str,
-        split: str = "train",
+        class_mode: str = "original",
         view: str = "both",
         hdf5_mode: Optional[str] = None,
         image_mode: str = "GRAY",
@@ -33,23 +34,26 @@ class CXRAbnormalityDataset(_ClassificationBaseImageHDF5):
         interpolation: Optional[int] = None,
     ):
         """
-        NIH Chest X-Ray abnormality dataset loader.
+        NIH Chest X-Ray pneumonia dataset loader.
 
         Reference:
-            Tang et al. npj Digital Medicine. (2020).
-            Automated abnormality classification of chest radiographs using deep convolutional neural networks
+            Shih et al. Radiology: Artificial Intelligence. (2020).
+            Augmenting the National Institutes of Health Chest Radiograph Dataset
+            with Expert Annotations of Possible Pneumonia
 
         This class loads a subset of images and labels from the NIH Chest X-Ray dataset.
-        Follow the instructions for the CXRDataset class, and additionally download dataset_split/ folder
-        from https://github.com/rsummers11/CADLab/tree/master/CXR-Binary-Classifier and place it in the
-        root_dir of the dataset.
+        Follow the instructions for the CXRDataset class, and additionally download
+            - stage_2_detailed_class_info.csv from https://www.kaggle.com/c/rsna-pneumonia-detection-challenge
+            - pneumoia-challenge-dataset-mappings_2018.json from https://www.rsna.org/artificial-intelligence/ai-image-challenge/rsna-pneumonia-detection-challenge-2018
+        and place them in pneumonia_challenge/ folder in the root_dir of the dataset.
 
         Parameters
         ----------
         root_dir : str
             Path to the root directory of the dataset.
-        split : str, optional
-            Split of the dataset to load. Can be "train", "val", or "test". Default is "train".
+        class_mode : str, optional
+            Mode of classification. Can be "original" (three classes) or "binary" (normal vs abnormal).
+            Default is "original".
         view : str, optional
             View position of the chest X-ray images to load.
             Can be "AP" (Anterior-Posterior), "PA" (Posterior-Anterior), or both.
@@ -103,23 +107,30 @@ class CXRAbnormalityDataset(_ClassificationBaseImageHDF5):
         # Load annotations file
         self.data = pd.read_csv(os.path.join(self.root_dir, 'Data_Entry_2017_v2020.csv'))
 
-        # Filter data based on Tang et al. split
-        assert split in ["train", "val", "test"], \
-            f"Invalid split: {split}. Must be 'train', 'val', or 'test'."
-        
-        if split == "train":
-            split_filename = "train.txt"
-        elif split == "val":
-            split_filename = "val.txt"
-        else:
-            split_filename = "test_rad_consensus_voted3.txt"
+        mapping_path = os.path.join(
+            root_dir,
+            "pneumonia_challenge",
+            "pneumonia-challenge-dataset-mappings_2018.json"
+        )
+        with open(mapping_path, "r") as f:
+            mapping_data = json.load(f)
+        mapping_df = pd.DataFrame(mapping_data)
+        mapping_df = mapping_df.rename(columns={
+            'img_id': 'Image Index',
+            'subset_img_id': 'patientId'
+        })
 
-        split_path = os.path.join(self.root_dir, "abnormality_dataset_split", split_filename)
-        split_df = pd.read_csv(split_path, sep=" ", header=None, names=["Image Index", "Binary Label"])
+        labels_path = os.path.join(
+            root_dir,
+            "pneumonia_challenge",
+            "stage_2_detailed_class_info.csv"
+        )
+        labels_df = pd.read_csv(labels_path)
+        labels_df = labels_df.drop_duplicates(subset="patientId", keep="first")
 
-        split_df['Binary Label'] = split_df['Binary Label'].map({1: 'abnormal', 0: 'normal'})
+        labels_df = labels_df.merge(mapping_df, on="patientId", how="inner")
 
-        self.data = self.data.merge(split_df, on="Image Index", how="inner")
+        self.data = self.data.merge(labels_df, on="Image Index", how="inner")
 
         # Filter data based on view position
         assert view in ["AP", "PA", "both"], \
@@ -129,8 +140,15 @@ class CXRAbnormalityDataset(_ClassificationBaseImageHDF5):
         elif view == "PA":
             self.data = self.data[self.data["View Position"] == "PA"]
 
-        self.labels = self.data['Binary Label'].tolist()
-        self.classes = sorted(self.data['Binary Label'].unique().tolist())
+        assert class_mode in ["original", "binary"], \
+            f"Invalid class_mode: {class_mode}. Must be 'original' or 'binary'."
+        if class_mode == "binary":
+            self.data['class'] = self.data['class'].apply(
+                lambda x: 'Abnormal' if x != "Normal" else "Normal"
+            )
+
+        self.labels = self.data['class'].tolist()
+        self.classes = sorted(self.data['class'].unique().tolist())
 
         self._initialize()
 
