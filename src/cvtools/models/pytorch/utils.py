@@ -4,8 +4,8 @@ Utility functions for PyTorch models.
 
 # Author: Atif Khurshid
 # Created: 2025-06-22
-# Modified: 2026-05-20
-# Version: 2.6
+# Modified: 2026-08-17
+# Version: 2.7
 # Changelog:
 #     - 2025-08-01: Added type hints and documentation.
 #     - 2025-08-01: Updated training loop to include epochs.
@@ -25,6 +25,7 @@ Utility functions for PyTorch models.
 #     - 2026-03-18: Added support for ROC curve computation in run_trials.
 #     - 2026-03-25: Added support for saving model checkpoints during training.
 #     - 2026-05-20: Fixed formatting bugs in logging and allowed training progress bar to be disabled.
+#     - 2026-08-17: Added support for ReduceLROnPlateau scheduler in on_epoch_end method.
 
 from pathlib import Path
 from typing import Callable, Union, Optional
@@ -389,7 +390,10 @@ def train_classification_model(
             if verbose:
                 print()
 
-        model.on_epoch_end()
+        model.on_epoch_end(
+            mean_loss = epoch_loss_val if val_dataloader is not None else 0.0,
+            mean_metric = epoch_metric_val if val_dataloader is not None else 0.0,
+        )
 
         if checkpoint_dir is not None and epoch % checkpoint_interval == 0:
             if verbose:

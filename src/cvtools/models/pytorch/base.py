@@ -4,8 +4,8 @@ Base class for PyTorch models.
 
 # Author: Atif Khurshid
 # Created: 2025-06-22
-# Modified: 2026-05-04
-# Version: 2.4
+# Modified: 2026-08-17
+# Version: 2.5
 # Changelog:
 #     - 2025-08-29: Added training and evaluation steps.
 #     - 2025-09-04: Added scheduler support.
@@ -13,13 +13,14 @@ Base class for PyTorch models.
 #     - 2026-04-16: Added support for non-blocking transfers to device.
 #     - 2026-04-17: Added support for on-GPU preprocessing.
 #     - 2026-05-04: Added support for multi-label classification.
+#     - 2026-08-17: Added support for ReduceLROnPlateau scheduler.
 
 from typing import Optional
 
 import torch
 import torch.nn as nn
 from torch.optim import Optimizer
-from torch.optim.lr_scheduler import LRScheduler
+from torch.optim.lr_scheduler import LRScheduler, ReduceLROnPlateau
 from torcheval.metrics.metric import Metric
 
 
@@ -246,12 +247,26 @@ class PyTorchModel(nn.Module):
         return metric.item()
     
 
-    def on_epoch_end(self):
+    def on_epoch_end(
+            self,
+            mean_loss: float = 0.0,
+            mean_metric: float = 0.0,
+        ):
         """
         Function to be called at the end of each epoch.
+
+        Parameters
+        ----------
+        mean_loss : float
+            The mean loss for the epoch.
+        mean_metric : float
+            The mean metric for the epoch.
         """
         if self.scheduler is not None:
-            self.scheduler.step()
+            if isinstance(self.scheduler, ReduceLROnPlateau):
+                self.scheduler.step(mean_loss)
+            else:
+                self.scheduler.step()
 
 
     def get_learning_rate(self) -> float:
@@ -264,3 +279,15 @@ class PyTorchModel(nn.Module):
             The current learning rate.
         """
         return self.optimizer.param_groups[0]['lr']
+
+
+    def set_learning_rate(self, lr: float):
+        """
+        Set the learning rate.
+
+        Parameters
+        ----------
+        lr : float
+            The new learning rate.
+        """
+        self.optimizer.param_groups[0]['lr'] = lr
