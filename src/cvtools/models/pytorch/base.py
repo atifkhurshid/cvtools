@@ -4,8 +4,8 @@ Base class for PyTorch models.
 
 # Author: Atif Khurshid
 # Created: 2025-06-22
-# Modified: 2026-08-17
-# Version: 2.5
+# Modified: 2026-09-24
+# Version: 2.6
 # Changelog:
 #     - 2025-08-29: Added training and evaluation steps.
 #     - 2025-09-04: Added scheduler support.
@@ -14,8 +14,11 @@ Base class for PyTorch models.
 #     - 2026-04-17: Added support for on-GPU preprocessing.
 #     - 2026-05-04: Added support for multi-label classification.
 #     - 2026-08-17: Added support for ReduceLROnPlateau scheduler.
+#     - 2026-09-24: Added support for registering hooks to capture activations.
+#     - 2026-09-24: Added inheritence from ABC.
 
-from typing import Optional
+from typing import Optional, Callable
+from abc import ABC, abstractmethod
 
 import torch
 import torch.nn as nn
@@ -24,13 +27,15 @@ from torch.optim.lr_scheduler import LRScheduler, ReduceLROnPlateau
 from torcheval.metrics.metric import Metric
 
 
-class PyTorchModel(nn.Module):
+class PyTorchModel(nn.Module, ABC):
     
     def __init__(self):
         """
         Base class for PyTorch models.
         """
         super().__init__()
+
+        self.activations = {}
 
         self.loss: nn.Module
         self.optimizer: Optimizer
@@ -44,6 +49,11 @@ class PyTorchModel(nn.Module):
 
         self.configured: bool = False
         self.training_samples_seen: int = 0
+
+
+    @abstractmethod
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        ...
 
 
     def configure_training(
@@ -291,3 +301,45 @@ class PyTorchModel(nn.Module):
             The new learning rate.
         """
         self.optimizer.param_groups[0]['lr'] = lr
+
+
+    def register_hooks(self, modules_to_hook: list[str]):
+        """
+        Register forward hooks to capture activations from specified modules.
+
+        Parameters
+        ----------
+        modules_to_hook : list[str]
+            List of module names to register hooks on.
+        """
+        def get_hook(name: str) -> Callable:
+            def hook(
+                    module: nn.Module,
+                    input: torch.Tensor,
+                    output: torch.Tensor
+                ):
+                self.activations[name] = output.detach().clone().cpu()
+                
+            return hook
+        
+        for name, module in self.named_modules():
+            if name in modules_to_hook:
+                module.register_forward_hook(get_hook(name))
+
+
+    def replace_inplace_relus(self, module: nn.Module):
+        """
+        Recursively replace all inplace ReLU activations
+        with non-inplace versions.
+
+        Parameters
+        ----------
+        module : nn.Module
+            The module in which to replace inplace ReLUs.
+        """
+        for name, child in module.named_children():
+            if isinstance(child, nn.ReLU):
+                setattr(module, name, nn.ReLU(inplace=False))
+            else:
+                self.replace_inplace_relus(child)
+    

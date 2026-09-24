@@ -4,8 +4,8 @@ Utility functions for PyTorch models.
 
 # Author: Atif Khurshid
 # Created: 2025-06-22
-# Modified: 2026-08-17
-# Version: 2.7
+# Modified: 2026-09-24
+# Version: 2.8
 # Changelog:
 #     - 2025-08-01: Added type hints and documentation.
 #     - 2025-08-01: Updated training loop to include epochs.
@@ -26,10 +26,12 @@ Utility functions for PyTorch models.
 #     - 2026-03-25: Added support for saving model checkpoints during training.
 #     - 2026-05-20: Fixed formatting bugs in logging and allowed training progress bar to be disabled.
 #     - 2026-08-17: Added support for ReduceLROnPlateau scheduler in on_epoch_end method.
+#     - 2026-09-24: Added weight initialization function for conv and linear layers.
 
 from pathlib import Path
 from typing import Callable, Union, Optional
 
+import math
 import wandb
 import torch
 import numpy as np
@@ -42,6 +44,43 @@ from .base import PyTorchModel
 from ...utils.pytorch import InfiniteDataLoader
 from ...utils.pytorch import EarlyStopping
 from ...metrics import compute_roc
+
+
+def init_weights(
+        model: nn.Module,
+        nonlinearity: str = 'relu',
+        a: float = 0,
+    ):
+    """
+    Initialize the weights of the model using Kaiming uniform initialization.
+
+    Parameters
+    ----------
+    model : nn.Module
+        The model or submodule whose weights are to be initialized.
+    nonlinearity : str, optional
+        The non-linear function used after convolutional layers, by default 'relu'.
+    a : float, optional
+        The negative slope of the rectifier used after this layer (only
+        used with 'leaky_relu'), by default 0.
+    """
+    for module in model.modules():
+        
+        bias = False
+        if isinstance(module, nn.Conv2d):
+            nn.init.kaiming_uniform_(module.weight, a=a, nonlinearity=nonlinearity)
+            if module.bias is not None:
+                bias = True
+
+        if isinstance(module, nn.Linear):
+            nn.init.kaiming_uniform_(module.weight)
+            if module.bias is not None:
+                bias = True
+
+        if bias:
+            fan_in, _ = nn.init._calculate_fan_in_and_fan_out(module.weight)
+            bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
+            nn.init.uniform_(module.bias, -bound, bound)
 
 
 def extract_features(
