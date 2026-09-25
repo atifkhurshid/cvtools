@@ -4,8 +4,8 @@ Base class for PyTorch models.
 
 # Author: Atif Khurshid
 # Created: 2025-06-22
-# Modified: 2026-09-24
-# Version: 2.6
+# Modified: 2026-09-25
+# Version: 2.7
 # Changelog:
 #     - 2025-08-29: Added training and evaluation steps.
 #     - 2025-09-04: Added scheduler support.
@@ -16,6 +16,9 @@ Base class for PyTorch models.
 #     - 2026-08-17: Added support for ReduceLROnPlateau scheduler.
 #     - 2026-09-24: Added support for registering hooks to capture activations.
 #     - 2026-09-24: Added inheritence from ABC.
+#     - 2026-09-25: Added support for more scheduler types.
+
+import warnings
 
 from typing import Optional, Callable
 from abc import ABC, abstractmethod
@@ -23,7 +26,10 @@ from abc import ABC, abstractmethod
 import torch
 import torch.nn as nn
 from torch.optim import Optimizer
-from torch.optim.lr_scheduler import LRScheduler, ReduceLROnPlateau
+from torch.optim.lr_scheduler import LRScheduler
+from torch.optim.lr_scheduler import StepLR
+from torch.optim.lr_scheduler import MultiStepLR
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torcheval.metrics.metric import Metric
 
 
@@ -57,17 +63,17 @@ class PyTorchModel(nn.Module, ABC):
 
 
     def configure_training(
-            self,
-            loss: nn.Module,
-            optimizer: Optimizer,
-            metric: Metric,
-            scheduler: Optional[LRScheduler] = None,
-            multilabel: bool = False,
-            device: torch.device = torch.device("cpu"),
-            non_blocking: bool = False,
-            preprocess_train: Optional[nn.Module] = None,
-            preprocess_test: Optional[nn.Module] = None,
-        ):
+        self,
+        loss: nn.Module,
+        optimizer: Optimizer,
+        metric: Metric,
+        scheduler: Optional[LRScheduler] = None,
+        multilabel: bool = False,
+        device: torch.device = torch.device("cpu"),
+        non_blocking: bool = False,
+        preprocess_train: Optional[nn.Module] = None,
+        preprocess_test: Optional[nn.Module] = None,
+    ):
         """
         Configure the model with the given loss, optimizer, and metric.
 
@@ -105,7 +111,11 @@ class PyTorchModel(nn.Module, ABC):
         self.configured = True
 
 
-    def train_step(self, X: torch.Tensor, y: torch.Tensor) -> float:
+    def train_step(
+        self,
+        X: torch.Tensor,
+        y: torch.Tensor
+    ) -> float:
         """
         Perform a single training step.
 
@@ -142,11 +152,11 @@ class PyTorchModel(nn.Module, ABC):
     
 
     def test_step(
-            self,
-            X: torch.Tensor, 
-            y: torch.Tensor,
-            return_outputs: bool = False,
-        ) -> tuple[Optional[torch.Tensor], float, torch.Tensor]:
+        self,
+        X: torch.Tensor, 
+        y: torch.Tensor,
+        return_outputs: bool = False,
+    ) -> tuple[Optional[torch.Tensor], float, torch.Tensor]:
         """
         Perform a single test step.
 
@@ -191,10 +201,10 @@ class PyTorchModel(nn.Module, ABC):
 
 
     def prepare_step(
-            self,
-            X: torch.Tensor,
-            y: torch.Tensor
-        ) -> tuple[torch.Tensor, torch.Tensor]:
+        self,
+        X: torch.Tensor,
+        y: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Prepare the input and target tensors for a training or test step.
 
@@ -220,10 +230,10 @@ class PyTorchModel(nn.Module, ABC):
 
 
     def compute_loss(
-            self,
-            outputs: torch.Tensor,
-            targets: torch.Tensor
-        ) -> torch.Tensor:
+        self,
+        outputs: torch.Tensor,
+        targets: torch.Tensor
+    ) -> torch.Tensor:
         """
         Compute the loss for the given outputs and targets.
 
@@ -255,13 +265,49 @@ class PyTorchModel(nn.Module, ABC):
         self.metric.reset()
 
         return metric.item()
-    
+
+
+    def scheduler_step(
+        self,
+        mean_loss: float = 0.0,
+        mean_metric: float = 0.0
+    ):
+        """
+        Step the learning rate scheduler if it is defined.
+
+        Parameters
+        ----------
+        mean_loss : float, optional
+            The mean loss for the epoch, used for ReduceLROnPlateau scheduler, by default 0.0.
+        mean_metric : float, optional
+            The mean metric for the epoch, used for ReduceLROnPlateau scheduler, by default 0.0.
+        """
+        if self.scheduler is not None:
+            if isinstance(self.scheduler, ReduceLROnPlateau):
+                if self.scheduler.mode == 'min':
+                    self.scheduler.step(mean_loss)
+                elif self.scheduler.mode == 'max':
+                    self.scheduler.step(mean_metric)
+                else:
+                    warnings.warn(
+                        f"Scheduler mode {self.scheduler.mode} not recognized. No step taken.")
+            
+            elif isinstance(self.scheduler, StepLR):
+                self.scheduler.step()
+            
+            elif isinstance(self.scheduler, MultiStepLR):
+                self.scheduler.step()
+            
+            else:
+                warnings.warn(
+                    f"Scheduler type {type(self.scheduler)} not recognized. No step taken.")
+
 
     def on_epoch_end(
-            self,
-            mean_loss: float = 0.0,
-            mean_metric: float = 0.0,
-        ):
+        self,
+        mean_loss: float = 0.0,
+        mean_metric: float = 0.0,
+    ):
         """
         Function to be called at the end of each epoch.
 
@@ -272,11 +318,7 @@ class PyTorchModel(nn.Module, ABC):
         mean_metric : float
             The mean metric for the epoch.
         """
-        if self.scheduler is not None:
-            if isinstance(self.scheduler, ReduceLROnPlateau):
-                self.scheduler.step(mean_loss)
-            else:
-                self.scheduler.step()
+        self.scheduler_step(mean_loss, mean_metric)
 
 
     def get_learning_rate(self) -> float:
@@ -314,10 +356,10 @@ class PyTorchModel(nn.Module, ABC):
         """
         def get_hook(name: str) -> Callable:
             def hook(
-                    module: nn.Module,
-                    input: torch.Tensor,
-                    output: torch.Tensor
-                ):
+                module: nn.Module,
+                input: torch.Tensor,
+                output: torch.Tensor
+            ):
                 self.activations[name] = output.detach().clone().cpu()
                 
             return hook
