@@ -4,11 +4,12 @@ Sequential PyTorch models.
 
 # Author: Atif Khurshid
 # Created: 2025-06-27
-# Modified: 2026-09-24
-# Version: 2.0
+# Modified: 2026-09-25
+# Version: 2.1
 # Changelog:
 #     - 2025-08-01: Added documentation and type hints.
 #     - 2026-09-24: Made functionality more similar to nn.Sequential.
+#     - 2026-09-25: Added support for extending the model with additional layers.
 
 from typing import Union
 from collections import OrderedDict
@@ -44,11 +45,9 @@ class PyTorchSequentialModel(PyTorchModel):
         super().__init__()
 
         self._layer_order: list[str] = []
-        self._registered: bool = False
 
         if layers:
             self.register_layers(*layers)
-            self._registered = True
 
 
     def register_layers(self, *layers: Union[nn.Module, OrderedDict]):
@@ -61,9 +60,6 @@ class PyTorchSequentialModel(PyTorchModel):
             Layers to apply in order. Can be individual nn.Module instances
             or an OrderedDict of named layers.
         """
-        if self._registered:
-            raise RuntimeError("Layers have already been registered. Cannot register again.")
-        
         if len(layers) == 1 and isinstance(layers[0], OrderedDict):
             names = list(layers[0].keys())
             modules = list(layers[0].values())
@@ -74,8 +70,7 @@ class PyTorchSequentialModel(PyTorchModel):
         for name, module in zip(names, modules):
             self.add_module(name, module)
 
-        self._layer_order = names
-        self._registered = True
+        self._layer_order.extend(names)
 
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -94,9 +89,6 @@ class PyTorchSequentialModel(PyTorchModel):
         torch.Tensor
             Output tensor.
         """
-        if not self._registered:
-            raise RuntimeError("No layers registered. Please call register_layers() before forward().")
-        
         for layer_name in self._layer_order:
             x = self._modules[layer_name](x)
 
