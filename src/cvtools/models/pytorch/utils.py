@@ -4,8 +4,8 @@ Utility functions for PyTorch models.
 
 # Author: Atif Khurshid
 # Created: 2025-06-22
-# Modified: 2026-09-24
-# Version: 2.8
+# Modified: 2026-09-30
+# Version: 2.9
 # Changelog:
 #     - 2025-08-01: Added type hints and documentation.
 #     - 2025-08-01: Updated training loop to include epochs.
@@ -27,6 +27,8 @@ Utility functions for PyTorch models.
 #     - 2026-05-20: Fixed formatting bugs in logging and allowed training progress bar to be disabled.
 #     - 2026-08-17: Added support for ReduceLROnPlateau scheduler in on_epoch_end method.
 #     - 2026-09-24: Added weight initialization function for conv and linear layers.
+#     - 2026-09-30: Added fractional epochs to wandb logging.
+#     - 2026-09-30: Added re-logging of best training cruves after early stopping.
 
 from pathlib import Path
 from typing import Callable, Union, Optional
@@ -35,6 +37,7 @@ import math
 import wandb
 import torch
 import numpy as np
+import pandas as pd
 import torch.nn as nn
 from tqdm import tqdm
 from torch.utils.data import Dataset, DataLoader
@@ -355,10 +358,11 @@ def train_classification_model(
                 min_delta = min_delta,
                 restore_best_weights = restore_best_weights
             )
+            if run is not None:
+                run_logs = []
 
     epoch = 0
     while epoch < epochs:
-        epoch += 1
         model.train()
 
         epoch_loss_train = []
@@ -369,7 +373,7 @@ def train_classification_model(
         for i, (X, y) in tqdm(
                 enumerate(train_dataloader, start=1),
                 total=len(train_dataloader),
-                desc=f"Epoch {epoch}/{epochs}",
+                desc=f"Epoch {epoch + 1}/{epochs}",
                 disable = not pbar,
             ):
             batch_loss_train = model.train_step(X, y)
@@ -395,20 +399,24 @@ def train_classification_model(
                         epoch_metric_val.append(batch_metric_val)
 
                 if run is not None:
-                    run.log({
+                    log = {
+                        "epoch": epoch + (i + 1) / len(train_dataloader),
                         "train/loss": batch_loss_train,
                         "train/metric": batch_metric_train,
                         "valid/loss": batch_loss_val if val_dataloader is not None else None,
                         "valid/metric": batch_metric_val if val_dataloader is not None else None,
                         "learning_rate": model.get_learning_rate(),
                         "samples_seen": model.training_samples_seen,
-                    })
+                    }
+                    run.log(log)
+                    if early_stopping:
+                        run_logs.append(log)
 
         epoch_loss_train = np.mean(epoch_loss_train)
         epoch_metric_train = np.mean(epoch_metric_train)
 
         if verbose:
-            print(f"Epoch {epoch}/{epochs}, ", end="")
+            print(f"Epoch {epoch + 1}/{epochs}, ", end="")
             print(f"Train Loss: {epoch_loss_train:.4f}, Train Metric: {epoch_metric_train:.4f}, ", end="")
 
         if val_dataloader is not None:
@@ -422,9 +430,18 @@ def train_classification_model(
                 early_stopper.step(model, epoch_loss_val)
                 if early_stopper.early_stop:
                     if verbose:
-                        print(f"Early stopping triggered at epoch {epoch}")
+                        print(f"Early stopping triggered at epoch {epoch + 1}")
                     early_stopper.restore(model)
-                    epoch = epochs  # Exit outer loop
+
+                    if run is not None:
+                        logs_df = pd.DataFrame(run_logs)
+                        logs_df = logs_df[logs_df["epoch"] <= early_stopper.best_epoch]
+                        for row in logs_df.to_dict(orient="records"):
+                            out = {"final_epoch": row.pop("epoch")}
+                            out.update({f"final/{k}": v for k, v in row.items() if pd.notna(v)})
+                            run.log(out)
+
+                    epoch = epochs - 1  # Exit outer loop
         else:
             if verbose:
                 print()
@@ -434,10 +451,12 @@ def train_classification_model(
             mean_metric = epoch_metric_val if val_dataloader is not None else 0.0,
         )
 
-        if checkpoint_dir is not None and epoch % checkpoint_interval == 0:
+        if checkpoint_dir is not None and (epoch + 1) % checkpoint_interval == 0:
             if verbose:
-                print(f"Saving checkpoint for epoch {epoch}...")
-            torch.save(model.state_dict(), checkpoint_dir / f"model_epoch_{epoch}.pth")
+                print(f"Saving checkpoint for epoch {epoch + 1}...")
+            torch.save(model.state_dict(), checkpoint_dir / f"model_epoch_{epoch + 1}.pth")
+
+        epoch += 1
 
     if early_stopping and not early_stopper.early_stop:
         early_stopper.restore(model)
