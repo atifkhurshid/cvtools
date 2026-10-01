@@ -13,7 +13,6 @@ import os
 import json
 from typing import Optional, Union
 
-import numpy as np
 import pandas as pd
 
 from .._base import _ClassificationBaseImageHDF5
@@ -52,8 +51,8 @@ class CXRPneumoniaDataset(_ClassificationBaseImageHDF5):
         root_dir : str
             Path to the root directory of the dataset.
         class_mode : str, optional
-            Mode of classification. Can be "original" (three classes) or "binary" (normal vs abnormal).
-            Default is "original".
+            Mode of classification.
+            Can be "original" (three classes), "binary" (normal vs abnormal), or "opacity" (presence of opacity in the image).
         view : str, optional
             View position of the chest X-ray images to load.
             Can be "AP" (Anterior-Posterior), "PA" (Posterior-Anterior), or both.
@@ -140,12 +139,15 @@ class CXRPneumoniaDataset(_ClassificationBaseImageHDF5):
         elif view == "PA":
             self.data = self.data[self.data["View Position"] == "PA"]
 
-        assert class_mode in ["original", "binary"], \
-            f"Invalid class_mode: {class_mode}. Must be 'original' or 'binary'."
+        assert class_mode in ["original", "binary", "opacity"], \
+            f"Invalid class_mode: {class_mode}. Must be 'original', 'binary', or 'opacity'."
         if class_mode == "binary":
             self.data['class'] = self.data['class'].apply(
                 lambda x: 'Abnormal' if x != "Normal" else "Normal"
             )
+        elif class_mode == "opacity":
+            self.data = self.data[self.data['class'] != "No Lung Opacity / Not Normal"]
+            self.data.reset_index(drop=True, inplace=True)
 
         self.labels = self.data['class'].tolist()
         self.classes = sorted(self.data['class'].unique().tolist())
