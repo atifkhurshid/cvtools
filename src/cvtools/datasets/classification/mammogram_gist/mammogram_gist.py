@@ -5,9 +5,10 @@ Dataloader for Mammogram dataset from https://github.com/gistmammocnn/MammogramG
 # Author: Atif Khurshid
 # Created: 2026-09-24
 # Modified: None
-# Version: 1.0
+# Version: 1.1
 # Changelog:
 #     - 2026-09-24: Initial version.
+#     - 2026-10-09: Added class modes.
 
 import os
 import glob
@@ -21,10 +22,13 @@ from .._base import _ClassificationBaseImage
 
 class MammogramGistDataset(_ClassificationBaseImage):
 
+    _class_modes = ["original", "binary-cancer", "binary-normal", "binary-exclude"]
+
     def __init__(
         self,
         root_dir: str,
         preprocessing: str = "none",
+        class_mode: str = "original",
         train: bool = True,
         image_mode: str = "GRAY",
         image_scale: Optional[float] = None,
@@ -50,6 +54,11 @@ class MammogramGistDataset(_ClassificationBaseImage):
         preprocessing : str, optional
             The type of preprocessing to apply to the images. Default is "none".
             Options are "none", "same-direction", "crop", and "crop-same-direction".
+        class_mode : str, optional
+            The mode of the classification task. Default is "original", which uses three classes.
+            If set to "binary-cancer", the "Contralateral" class is merged with the "Cancer" class.
+            If set to "binary-normal", the "Contralateral" class is merged with the "Normal" class.
+            If set to "binary-exclude", the "Contralateral" class is excluded from the dataset.
         train : bool, optional
             If True, uses the training set. Default is True.
         image_mode : str, optional
@@ -77,6 +86,10 @@ class MammogramGistDataset(_ClassificationBaseImage):
         idx2label : dict
             Mapping from indices to class labels.
         """
+        if class_mode not in self._class_modes:
+            raise ValueError(f"Invalid class_mode: {class_mode}. "
+                             f"Valid options are ", f"{', '.join(self._class_modes)}.")
+
         super().__init__(
             root_dir=root_dir,
             image_mode=image_mode,
@@ -128,6 +141,9 @@ class MammogramGistDataset(_ClassificationBaseImage):
 
         self.data = pd.merge(image_files_df, annotations_df, on="ImageID", how="outer")
 
+        if class_mode == "binary-exclude":
+            self.data = self.data[self.data["Class"] != "Contralateral"].reset_index(drop=True)
+
         no_human_annotations = self.data["AvgResponseRating"].isna()
         if train:
             self.data = self.data[no_human_annotations].reset_index(drop=True)
@@ -138,7 +154,13 @@ class MammogramGistDataset(_ClassificationBaseImage):
             self.ratings = self.data["AvgResponseRating"].tolist()
 
         self.labels = self.data["Class"].tolist()
-        self.classes = sorted(self.data["Class"].unique())
+
+        if class_mode == "binary-cancer":
+            self.labels = ["Cancer" if label == "Contralateral" else label for label in self.labels]
+        elif class_mode == "binary-normal":
+            self.labels = ["Normal" if label == "Contralateral" else label for label in self.labels]
+
+        self.classes = sorted(set(self.labels))
 
         self._initialize()
 
