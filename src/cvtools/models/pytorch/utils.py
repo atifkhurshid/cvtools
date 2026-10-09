@@ -4,7 +4,7 @@ Utility functions for PyTorch models.
 
 # Author: Atif Khurshid
 # Created: 2025-06-22
-# Modified: 2026-09-30
+# Modified: 2026-10-09
 # Version: 2.9
 # Changelog:
 #     - 2025-08-01: Added type hints and documentation.
@@ -29,6 +29,7 @@ Utility functions for PyTorch models.
 #     - 2026-09-24: Added weight initialization function for conv and linear layers.
 #     - 2026-09-30: Added fractional epochs to wandb logging.
 #     - 2026-09-30: Added re-logging of best training cruves after early stopping.
+#     - 2026-10-09: Added starting epochs to training function for resuming training.
 
 from pathlib import Path
 from typing import Callable, Union, Optional
@@ -161,7 +162,7 @@ def save_feature_maps(
     save_path : str
         Path where the feature maps will be saved.
     batch_size : int
-        Batch size to use for processing the dataset. Default is 32.
+        Batch size to use for processing the dataset. 
     device : str
         Device to run the model on (e.g., 'cpu' or 'cuda').
 
@@ -211,9 +212,9 @@ def test_classification_model(
     data : DataLoader | tuple 
         DataLoader containing the evaluation data or a tuple (X, y).
     return_outputs : bool
-        Whether to return the model outputs along with the predictions and loss. Default is False.
+        Whether to return the model outputs along with the predictions and loss. 
     pbar : bool
-        Whether to show a progress bar during evaluation. Default is True.
+        Whether to show a progress bar during evaluation. 
 
     Returns
     --------
@@ -277,8 +278,9 @@ def test_classification_model(
 def train_classification_model(
         model: PyTorchModel,
         train_dataloader: DataLoader,
-        epochs: int = 1,
         val_dataloader: Optional[DataLoader] = None,
+        epochs: int = 1,
+        starting_epoch: int = 0,
         val_strategy: str = "batch",
         early_stopping: bool = False,
         patience: int = 5,
@@ -302,38 +304,36 @@ def train_classification_model(
         The PyTorch model to train.
     train_dataloader : DataLoader
         DataLoader containing the training data.
-    epochs : int
-        Number of epochs to train the model. Default is 1.
     val_dataloader : DataLoader | None
         DataLoader containing the validation data. If None, no validation is performed.
-        Default is None.
+    epochs : int
+        Number of epochs to train the model.
+    starting_epoch : int
+        The epoch number to start training from. Useful for resuming training.
     val_strategy : str
         Strategy for validation:
         - "dataset": Evaluate on the entire validation dataset at each logging interval.
         - "batch": Evaluate on a single batch from the validation dataset at each logging interval.
-        Default is "batch".
     early_stopping : bool
-        Whether to use early stopping based on validation loss. Default is False.
+        Whether to use early stopping based on validation loss.
     patience : int
-        Number of epochs with no improvement after which training will be stopped if early stopping is enabled. Default is 5.
+        Number of epochs with no improvement after which training will be stopped if early stopping is enabled.
     min_delta : float
-        Minimum change in the monitored quantity to qualify as an improvement for early stopping. Default is 1e-4.
+        Minimum change in the monitored quantity to qualify as an improvement for early stopping.
     restore_best_weights : bool
-        Whether to restore the model weights from the epoch with the best validation loss after training. Default is True.
+        Whether to restore the model weights from the epoch with the best validation loss after training.
     run : wandb.Run | None
         Weights & Biases run for logging. If None, no logging is performed.
-        Default is None.
     log_interval : int
-        Interval (in steps) at which to log training progress. Default is 10.
+        Interval (in steps) at which to log training progress. 
     checkpoint_dir : str | None
         Directory to save model checkpoints. If None, no checkpoints are saved.
-        Default is None.
     checkpoint_interval : int
-        Interval (in epochs) at which to save model checkpoints. Default is 10.
+        Interval (in epochs) at which to save model checkpoints. 
     verbose : bool
-        Whether to print training progress to the console. Default is True.
+        Whether to print training progress to the console. 
     pbar : bool
-        Whether to show a progress bar during training. Default is True.
+        Whether to show a progress bar during training. 
 
     Examples
     ---------
@@ -361,7 +361,9 @@ def train_classification_model(
             if run is not None:
                 run_logs = []
 
-    epoch = 0
+    epoch = starting_epoch
+    epochs = starting_epoch + epochs
+
     while epoch < epochs:
         model.train()
 
@@ -371,11 +373,11 @@ def train_classification_model(
         epoch_metric_val = []
 
         for i, (X, y) in tqdm(
-                enumerate(train_dataloader, start=1),
-                total=len(train_dataloader),
-                desc=f"Epoch {epoch + 1}/{epochs}",
-                disable = not pbar,
-            ):
+            enumerate(train_dataloader, start=1),
+            total=len(train_dataloader),
+            desc=f"Epoch {epoch + 1}/{epochs}",
+            disable = not pbar,
+        ):
             batch_loss_train = model.train_step(X, y)
             batch_metric_train = model.compute_metric()
             epoch_loss_train.append(batch_loss_train)
