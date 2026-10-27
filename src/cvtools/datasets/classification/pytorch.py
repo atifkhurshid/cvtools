@@ -4,10 +4,11 @@ PyTorch wrapper for classification datasets.
 
 # Author: Atif Khurshid
 # Created: 2026-03-03
-# Modified: None
-# Version: 1.0
+# Modified: 2026-10-23
+# Version: 1.1
 # Changelog:
 #     - 2026-03-03: Initial creation of PyTorch wrapper for classification datasets.
+#     - 2026-10-23: Added __getitems__ method to retrieve multiple items at once.
 
 from typing import Callable, Optional
 
@@ -19,6 +20,7 @@ from ._base import _ClassificationBase
 
 
 class PyTorchDataset(Dataset):
+    
     def __init__(
             self,
             dataset: _ClassificationBase,
@@ -81,6 +83,23 @@ class PyTorchDataset(Dataset):
             label = self.target_transform(label)
 
         return image, label
+
+
+    def __getitems__(self, indices: list[int]) -> list[tuple[torch.Tensor, torch.Tensor]]:
+        """
+        Get multiple images and corresponding labels from the dataset.
+
+        Parameters
+        ----------
+        indices : list[int]
+            List of indices of the items to retrieve.
+
+        Returns
+        -------
+        list[tuple[torch.Tensor, torch.Tensor]]
+            A list of tuples, each containing an image tensor and a label tensor.
+        """
+        return [self.__getitem__(i) for i in indices]
 
 
     def __getattr__(self, name):
