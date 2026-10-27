@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "cvtools"
 version = "2025.0.0"
 dependencies = [
+    "h5py",
     "iterative-stratification",
     "matplotlib",
     "munkres",
@@ -36,9 +37,12 @@ classifiers = [
 tensorflow = ["tensorflow"]
 torch = [
     "torch",
-    "torchvision",
     "torchaudio",
+    "torcheval",
+    "torchvision",
 ]
+dicom = ["pydicom"]
+all = ["cvtools[tensorflow,torch,dicom]"]
 
 [project.urls]
 Homepage = "https://github.com/atifkhurshid/cvtools"
