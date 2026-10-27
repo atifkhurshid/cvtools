@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "cvtools"
 version = "2025.0.0"
 dependencies = [
+    "iterative-stratification",
     "matplotlib",
     "munkres",
     "numpy",
