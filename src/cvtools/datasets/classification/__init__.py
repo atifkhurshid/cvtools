@@ -11,4 +11,5 @@ from .cxr import CXRDataset
 from .cxr import CXRAbnormalityDataset
 from .cxr import CXRPneumoniaDataset
 from .covid import Covid19Dataset
-from .mammogram_gist import MammogramGistDataset
+from .mammogram import MammogramGistDataset
+from .mammogram import MammogramDataset
