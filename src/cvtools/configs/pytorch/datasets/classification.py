@@ -247,6 +247,8 @@ class PyTorchClassificationDatasetConfig(ConfigBase):
 
         if hasattr(dataset_train, "classes"):
             self.classes = dataset_train.classes
+            if isinstance(self.classes[0], list) or isinstance(self.classes[0], tuple):
+                self.classes = [c[0] for c in self.classes]
         elif hasattr(dataset_train, "info") and "label" in dataset_train.info:
             self.classes = list(dataset_train.info["label"].values())
         else:
