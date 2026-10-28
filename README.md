@@ -30,13 +30,11 @@ pip install -e ".[dicom]"       # adds pydicom
 import torch
 from torchvision.datasets import Imagenette
 
-from cvtools.configs.pytorch import PyTorchClassificationDatasetConfig
-from cvtools.configs.pytorch import PyTorchClassificationModelConfig
-from cvtools.models.pytorch import StandardCNN
-from cvtools.models.pytorch.utils import train_classification_model
-from cvtools.models.pytorch.utils import test_classification_model
-from cvtools.evaluation.classification import evaluate_classification
 from cvtools.utils.pytorch import set_seed
+from cvtools.models.pytorch import StandardCNN
+from cvtools.experiments.configs.pytorch import PyTorchClassificationDatasetConfig
+from cvtools.experiments.configs.pytorch import PyTorchClassificationModelConfig
+from cvtools.experiments.pytorch import run_classification_experiment
 
 
 device = torch.accelerator.current_accelerator() \
@@ -63,8 +61,6 @@ dataset_config = PyTorchClassificationDatasetConfig(
     color_mode = "RGB",
     augmentations = True,
 )
-
-dataloader_train, dataloader_val, dataloader_test = dataset_config.load_data()
 
 model_config = PyTorchClassificationModelConfig(
     model_name = "resnet18",
@@ -97,42 +93,21 @@ model_config = PyTorchClassificationModelConfig(
     checkpoint_interval = 10,
 )
 
-model = model_config.prepare_model()
-
 # Optional logging to weights and biases
-run = wandb.init(
-    # args
-)
-# else run = None
-
-train_classification_model(
-    model = model,
-    train_dataloader = dataloader_train,
-    val_dataloader = dataloader_val,
-    val_strategy = model_config.val_strategy,
-    epochs = model_config.epochs,
-    early_stopping = model_config.early_stopping,
-    patience = model_config.early_stopping_patience,
-    restore_best_weights = model_config.early_stopping_restore_best_weights,
-    run = run,
-    log_interval = dataset_config.train_batches // model_config.log_frequency,
-    checkpoint_dir = model_config.checkpoint_dir,
-    checkpoint_interval = model_config.checkpoint_interval,
+wandb_config = dict(
+    entity = WANDB_ENTITY,
+    project = WANDB_PROJECT,
+    dir = WANDB_DIR,
+    temp_dir = TEMP_DIR,
 )
 
-mean_loss, mean_metric, outputs, y_pred, y_true = test_classification_model(
-    model = model,
-    data = dataloader_test,
-    return_outputs = True,
+run_classification_experiment(
+    name = "ResNet18 on Imagenette",
+    dataset_config = dataset_config,
+    model_config = model_config,
+    wandb_config = wandb_config,
 )
 
-report = evaluate_classification(
-    y_true, y_pred, outputs,
-    class_names = dataset_config.classes,
-    confusion = True,
-    roc = True,
-    return_report = True
-)
 ```
 
 ---
@@ -149,7 +124,7 @@ cvtools/
 ├── layers/           Custom PyTorch layers
 ├── losses/           Custom PyTorch loss functions
 ├── models/           PyTorch model base classes and training utilities
-├── configs/          Config classes and transform registry
+├── experiments/      Scripts and Config classes for experiments
 ├── metrics/          Classification and clustering metrics
 ├── evaluation/       High-level model evaluation
 ├── visualization/    Plots, feature projections, Grad-CAM
@@ -221,7 +196,9 @@ Model abstractions that bundle architecture, loss, optimizer, scheduler, and met
   - `run_trials`: repeated train/test runs.
   - `extract_features`, `save_feature_maps`: feature extraction.
 
-### `cvtools.configs`
+### `cvtools.experiments`
+
+**Configs**
 
 Declarative setup for PyTorch classification experiments.
 
@@ -233,6 +210,13 @@ Declarative setup for PyTorch classification experiments.
   - `build_transforms(specs)`: builds a `torchvision.transforms.v2.Compose`.
   - Preregistered: most `torchvision.transforms.v2` transforms (for example `"resize"`, `"random_crop"`, `"color_jitter"`, `"normalize"`).
   - Custom target transforms: `ToInt64Tensor`, `ToFloatTensor`, `ToOneHotTensor`, `SqueezeTensor`.
+
+**Experiments**
+
+Scripts to run PyTorch classification experiments. Use configs for model and dataset definitions.
+
+- `experiments.pytorch.run_classification_experiment`: single function call that trains and evaluates a model on a specified dataset.
+- `experiments.pytorch.run_classification_experiments_with_trials`: single function call that runs multiple trials of model training and testing.
 
 ### `cvtools.metrics`
 
