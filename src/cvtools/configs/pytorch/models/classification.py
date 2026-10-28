@@ -54,8 +54,12 @@ class PyTorchClassificationModelConfig(ConfigBase):
             The number of classes in the classification task.
         input_shape : tuple
             The shape of the input data (batch_size, channels, height, width).
+        device : torch.device
+            The device on which to train the model (e.g., "cpu" or "cuda").
         loss_fn : str
             The loss function to use for training. Options: "cross_entropy", "binary_cross_entropy".
+        class_weights : Optional[torch.Tensor]
+            The class weights to use for the loss function (if applicable).
         optimizer : str
             The optimizer to use for training. Options: "sgd", "adamw".
         metric : str
@@ -78,11 +82,11 @@ class PyTorchClassificationModelConfig(ConfigBase):
             The frequency (in batches) at which to log training progress.
         scheduler : Optional[str] 
             The learning rate scheduler to use. Options: "step", "multistep", "plateau", or None.
-        scheduling_step_size : Optional[int]
+        scheduler_step_size : Optional[int]
             The step size for the StepLR scheduler (if used).
-        scheduling_milestones : Optional[list]
+        scheduler_milestones : Optional[list]
             The milestones for the MultiStepLR scheduler (if used).
-        scheduling_gamma : float
+        scheduler_gamma : float
             The gamma value for the learning rate scheduler.
         scheduler_mode : str
             The mode for the ReduceLROnPlateau scheduler. Options: "min", "max".
@@ -116,10 +120,6 @@ class PyTorchClassificationModelConfig(ConfigBase):
             The directory where model checkpoints will be saved during training.
         checkpoint_interval : int
             The interval (in epochs) at which to save model checkpoints during training.
-        device : torch.device
-            The device on which to train the model (e.g., "cpu" or "cuda").
-        class_weights : Optional[torch.Tensor]
-            The class weights to use for the loss function (if applicable).
         """
         super().__init__()
 
@@ -128,8 +128,10 @@ class PyTorchClassificationModelConfig(ConfigBase):
         self.model_kwargs: dict = {}
         self.n_classes: int = 0
         self.input_shape: tuple = (1, 3, 224, 224)
+        self.device: torch.device = torch.device("cpu")
 
         self.loss_fn: str = "cross_entropy"
+        self.class_weights: Optional[torch.Tensor] = None
         self.optimizer: str = "sgd"
         self.metric: str = "multiclass_accuracy"
         self.epochs: int = 0
@@ -143,9 +145,9 @@ class PyTorchClassificationModelConfig(ConfigBase):
         self.log_frequency: int = 5
 
         self.scheduler: Optional[str] = None
-        self.scheduling_step_size: Optional[int] = 10
-        self.scheduling_milestones: Optional[list] = None
-        self.scheduling_gamma: float = 0.1
+        self.scheduler_step_size: Optional[int] = 10
+        self.scheduler_milestones: Optional[list] = None
+        self.scheduler_gamma: float = 0.1
         self.scheduler_mode: str = "min"
         self.scheduler_factor: float = 0.1
         self.scheduler_patience: int = 10
@@ -157,16 +159,14 @@ class PyTorchClassificationModelConfig(ConfigBase):
 
         self.pretrain: bool = False
         self.pretrain_epochs: int = 0
+
         self.early_stopping: bool = False
-        self.patience: int = 10
-        self.min_delta: float = 1e-4
-        self.restore_best_weights: bool = True
+        self.early_stopping_patience: int = 10
+        self.early_stopping_min_delta: float = 1e-4
+        self.early_stopping_restore_best_weights: bool = True
 
         self.checkpoint_dir: Optional[str] = None
         self.checkpoint_interval: int = 10
-
-        self.device: torch.device = torch.device("cpu")
-        self.class_weights: Optional[torch.Tensor] = None
 
         if type(self) is PyTorchClassificationModelConfig:
             # Only run if this is the instantiated class,
@@ -233,6 +233,9 @@ class PyTorchClassificationModelConfig(ConfigBase):
         nn.Module
             The defined loss function.
         """
+        if self.class_weights is not None:
+            self.class_weights = self.class_weights.to(self.device)
+            
         if loss_fn_name == "cross_entropy":
             return nn.CrossEntropyLoss(weight = self.class_weights)
         elif loss_fn_name == "binary_cross_entropy":
@@ -320,21 +323,21 @@ class PyTorchClassificationModelConfig(ConfigBase):
             The optimizer for which to define the scheduler.
         """
         if self.scheduler == "step":
-            if self.scheduling_step_size is None:
-                raise ValueError("scheduling_step_size must be specified for StepLR scheduler.")
+            if self.scheduler_step_size is None:
+                raise ValueError("scheduler_step_size must be specified for StepLR scheduler.")
             scheduler = StepLR(
                 optimizer,
-                step_size = self.scheduling_step_size,
-                gamma = self.scheduling_gamma
+                step_size = self.scheduler_step_size,
+                gamma = self.scheduler_gamma
             )
 
         elif self.scheduler == "multistep":
-            if self.scheduling_milestones is None:
-                raise ValueError("scheduling_milestones must be specified for MultiStepLR scheduler.")
+            if self.scheduler_milestones is None:
+                raise ValueError("scheduler_milestones must be specified for MultiStepLR scheduler.")
             scheduler = MultiStepLR(
                 optimizer,
-                milestones = self.scheduling_milestones,
-                gamma = self.scheduling_gamma
+                milestones = self.scheduler_milestones,
+                gamma = self.scheduler_gamma
             )
 
         elif self.scheduler == "plateau":
