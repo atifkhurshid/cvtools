@@ -18,14 +18,13 @@ from typing import Optional, Union
 import torch
 import numpy as np
 
-from torchvision.transforms.v2 import Compose
 from torch.utils.data import Dataset, DataLoader
 from sklearn.utils.class_weight import compute_class_weight
 
 from ..._base import ConfigBase
-from ....datasets.classification.pytorch import PyTorchDataset
+from .....datasets.classification.pytorch import PyTorchDataset
+from .....utils.pytorch import dataset_train_test_split
 from .transforms import TransformSpec, build_transforms
-from ....utils.pytorch import dataset_train_test_split
 
 
 class PyTorchClassificationDatasetConfig(ConfigBase):
