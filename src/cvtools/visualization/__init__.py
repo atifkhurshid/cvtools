@@ -7,3 +7,5 @@ from .classification import plot_roc_curve
 from .classification import plot_roc_curves
 from .classification import display_confusion_matrix
 from .classification import plot_roc_curves_with_confidence_intervals
+from .boxes import plot_boxes
+from .boxes import plot_boxes_multicolor
