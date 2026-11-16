@@ -6,3 +6,4 @@ from .classification import topk_predictions
 from .random import set_seed
 from .early_stopping import EarlyStopping
 from .boxes import suppress_windows
+from .models import register_forward_hooks
