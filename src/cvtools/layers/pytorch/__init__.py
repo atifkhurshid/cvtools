@@ -1,3 +1,4 @@
+from .nn_module import nnModule
 from .l2norm import L2Norm
 from .gaussian_divisive_norm import GaussianDivisiveNorm
 from .divisive_feature_norm import DivisiveFeatureNorm
